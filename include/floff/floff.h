@@ -4565,6 +4565,7 @@ case n:                                                                         
     }
 }
 
+#undef JKJ_UNRECHABLE
 #undef JKJ_FORCEINLINE
 #undef JKJ_SAFEBUFFERS
 #undef JKJ_HAS_BUILTIN
