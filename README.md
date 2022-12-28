@@ -3,8 +3,8 @@ A test repository for the WIP algorithm for fixed-precision floating-point forma
 
 
 ![benchmark](subproject/benchmark/results/to_chars_fixed_precision_benchmark_binary64.png)
-- **Red**: Proposed algorithm with the full (9904 bytes) cache table and the long (3720 bytes) extended cache table.
-- **Green**: Proposed algorithm with the compressed (584 bytes) cache table and the super-compact (597 bytes) extended cache table.
+- **Red**: Proposed algorithm with the full (9904 bytes) cache table and the long (3688 bytes) extended cache table.
+- **Green**: Proposed algorithm with the compressed (584 bytes) cache table and the super-compact (596 bytes) extended cache table.
 - **Blue**: Ryu-printf (reference implementation).
 - **Purple**: fmtlib.
 

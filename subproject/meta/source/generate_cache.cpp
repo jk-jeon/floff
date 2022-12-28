@@ -156,7 +156,10 @@ auto generate_extended_cache(int segment_length, int collapse_factor, unsigned i
                      0,
                      {}});
 
+    std::size_t max_cache_bits = 0;
     for (int e = e_min; e <= e_max; ++e) {
+        std::cout << "Inspecting necessary bits for e = " << e << "...\n";
+
         // We assume we already know the digits we obtain by multiplying
         // 10^(kappa - floor(e*log10(2))), so the first k is the smallest k that is
         // strictly larger than kappa - floor(e*log10(2)).
@@ -240,13 +243,12 @@ auto generate_extended_cache(int segment_length, int collapse_factor, unsigned i
             mul_info[multiplier_index].individual_ranges.push_back(
                 {first_bit_index, last_bit_index});
 
-            result.max_cache_blocks = std::max(
-                result.max_cache_blocks, (cache_bits + cache_bits_unit - 1) / cache_bits_unit);
-
+            max_cache_bits = std::max(max_cache_bits, cache_bits);
             ++multiplier_index;
             k += segment_length;
         }
     }
+    result.max_cache_blocks = (max_cache_bits + cache_bits_unit - 1) / cache_bits_unit;
 
     std::size_t number_of_e_base_k_pairs = 0;
     // For average computation.
@@ -256,6 +258,7 @@ auto generate_extended_cache(int segment_length, int collapse_factor, unsigned i
     std::size_t accumulated_number_of_cache_blocks = 0;
     std::size_t number_of_e_k_pairs = 0;
 
+    std::cout << "\nGenerating multipliers...\n\n";
     for (int multiplier_index = 0; multiplier_index < number_of_multipliers; ++multiplier_index) {
         auto& r = mul_info[multiplier_index];
         int const k = k_min + multiplier_index * segment_length;
@@ -363,7 +366,8 @@ auto generate_extended_cache(int segment_length, int collapse_factor, unsigned i
               << "\n";
     std::cout << "    Number of (e_base,k) pairs: " << number_of_e_base_k_pairs << "\n";
     std::cout << "         Number of powers of 5: " << number_of_multipliers << "\n";
-    std::cout << "Maximum number of cache blocks: " << result.max_cache_blocks << "\n";
+    std::cout << "Maximum number of cache blocks: " << result.max_cache_blocks << " ("
+              << max_cache_bits << " bits)\n";
     std::cout << "Average number of cache blocks: "
               << double(accumulated_number_of_cache_blocks) / number_of_e_k_pairs << "\n";
     std::cout << "         Number of (e,k) pairs: " << number_of_e_k_pairs << "\n";
@@ -630,7 +634,7 @@ bool print_cache(std::ostream& out, extended_cache_result<CacheUnitType> const& 
         }
     }
     if (cache.collapse_factor == 0) {
-        out << "{" << cache_bits_prefix_sums.back() << ", 0}\n};\n\n";
+        out << "{" << cache_bits_prefix_sums.back() << ", 0}\n};";
     }
     else {
         out << "{" << cache_bits_prefix_sums.back() << ", 0, 0}\n};\n\n";
@@ -732,8 +736,8 @@ void generate_extended_cache_and_write_to_file(char const* filename, int segment
 }
 
 int main() {
-    constexpr bool generate_long = false;
-    constexpr bool generate_compact = false;
+    constexpr bool generate_long = true;
+    constexpr bool generate_compact = true;
     constexpr bool generate_super_compact = true;
 
     if constexpr (generate_long) {
