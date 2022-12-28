@@ -1,0 +1,110 @@
+static constexpr std::size_t max_cache_blocks = 15;
+static constexpr std::size_t cache_bits_unit = 64;
+static constexpr int segment_length = 248;
+static constexpr bool constant_block_count = false;
+static constexpr int collapse_factor = 256;
+static constexpr int e_min = -1074;
+static constexpr int k_min = -42;
+static constexpr int cache_bit_index_offset_base = 964;
+static constexpr int cache_block_count_offset_base = 4;
+
+static constexpr std::uint64_t cache[] = {
+	0xc795830d75038c1d,
+	0xd59df5b9ef6a2417,
+	0xfeb13da03da3a72f,
+	0xa1be04416f774ca1,
+	0x85f538987c4d8ab3,
+	0xde9c74098f2bafa8,
+	0x09a003c7c6610e49,
+	0xe024d5164b0c06fe,
+	0x0a1b59c84d1cd5e1,
+	0xfb4e3ce9ae1127b3,
+	0x1f74b35f1676bfb5,
+	0x5a6178a7e4154997,
+	0x225ececfef86100d,
+	0xc22500a646440317,
+	0x65c84e33890d9b6f,
+	0x4b64cfda3281e38c,
+	0x38abe071646eb23d,
+	0xa6fe6d6cc1efae1f,
+	0x271519d8c3582ab7,
+	0xf4931d33f999fd9c,
+	0x3790857d3b1c20a7,
+	0xc6dd42910d8a142c,
+	0x04f4be30a3aa82a3,
+	0x6d50a91812915871,
+	0xd12fe50e7c05e6e7,
+	0x1e0118504217b413,
+	0xf5a9524466060c9b,
+	0xd24835fb592dda59,
+	0xce247583dafc13a3,
+	0xd6d2ec6122fa0297,
+	0xcc25db2a2695e457,
+	0x6696e10591f5ce68,
+	0x1492799f8789a99c,
+	0x18fe2337b88e7fbd,
+	0xcb00c4ff5bcd359c,
+	0x1f403b0b610e2ba4,
+	0xff1a2b8770671d1f,
+	0x89446e280e0fe3fe,
+	0xde31e156e983bde6,
+	0xad28b501fe2124b8,
+	0x73a94b143204ca22,
+	0x274cf7d54555c418,
+	0x67de685a6f480f90,
+	0x43c018b1ba6134e1,
+	0xaf1ba09601adc9dd,
+	0xf4d9f8846f47b97c,
+	0xcfa1a4e5a50a1c8f,
+	0xc209f966d164a0de,
+	0xd91fcc78a50d5dcb,
+	0xb1137374e603c32d,
+	0xf0df5a26adac1989,
+	0x40debbff34f6d4b4,
+	0x46ec297d93ef72d7,
+	0xd7f56a97cadfa5d3,
+	0x86a81ee9c1d0d9ed,
+	0x2d7052a871a834a3,
+	0xa7f23270dbdce54c,
+	0x9826b4b343e66dda,
+	0x353c75aed626113f,
+	0x7826e7de23378808,
+	0x311b7e82518684e2,
+	0x3a73ef3ccb923344,
+	0x945afe73c9499482,
+	0xd720fd6a618f75ea,
+	0x64362c38a83df253,
+	0xe9c43aff0df23a7a,
+	0xa38283c9fc0b8490,
+	0x0000000000000000
+};
+
+struct multiplier_index_info {
+	std::uint16_t first_cache_bit_index;
+	std::uint16_t cache_bit_index_offset;
+	std::uint16_t cache_block_count_index_offset;
+};
+
+static constexpr multiplier_index_info multiplier_index_info_table[] = {
+	{0, 0, 0},
+	{967, 1791, 7},
+	{2690, 4338, 15},
+	{3169, 5207, 19},
+	{3790, 5824, 22},
+	{4159, 6197, 24},
+	{4284, 0, 0}
+};
+
+static constexpr std::uint8_t cache_block_counts[] = {
+	0xff,
+	0xff,
+	0xff,
+	0xef,
+	0xee,
+	0xee,
+	0x6a,
+	0xa2,
+	0x26,
+	0x26,
+	0x02
+};
