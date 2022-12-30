@@ -2478,7 +2478,7 @@ namespace jkj::floff {
                     }
                     // 1 or 2 digits (3 or 4 digits in total).
                     else {
-                        prod = std::uint64_t(first_subsegment) << 32;
+                        prod = std::uint64_t(second_subsegment) << 32;
                         remaining_digits_in_the_current_subsegment = 0;
                     }
 
