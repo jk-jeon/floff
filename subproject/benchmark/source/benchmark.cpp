@@ -167,8 +167,8 @@ static void benchmark_test(std::string_view float_name, std::size_t number_of_sa
 
 int main() {
     constexpr std::size_t number_of_benchmark_samples_double = 1000000;
-    constexpr double duration_per_each_precision_in_sec_double = 0.2;
-    constexpr int max_digits_double = 770; // max_nonzero_decimal_digits = 767
+    constexpr double duration_per_each_precision_in_sec_double = 0.1;
+    constexpr int max_digits_double = 100; // max_nonzero_decimal_digits = 767
 
 
     std::cout << "[Running fixed-precision formatting benchmark for binary64...]\n";
