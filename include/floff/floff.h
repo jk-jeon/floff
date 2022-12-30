@@ -888,8 +888,8 @@ namespace jkj::floff {
         // loaded. The most significant block is loaded into blocks_ptr[0].
         template <class ExtendedCache, bool zero_out,
                   class CacheBlockType = std::decay_t<decltype(ExtendedCache::cache[0])>>
-        JKJ_FORCEINLINE std::uint8_t load_extended_cache(CacheBlockType* blocks_ptr, int e,
-                                                         std::uint32_t multiplier_index) noexcept {
+        std::uint8_t load_extended_cache(CacheBlockType* blocks_ptr, int e, int k,
+                                         std::uint32_t multiplier_index) noexcept {
             if constexpr (zero_out) {
                 std::memset(blocks_ptr, 0,
                             sizeof(CacheBlockType) * ExtendedCache::max_cache_blocks);
@@ -1098,6 +1098,16 @@ namespace jkj::floff {
 
             blocks_ptr[cache_block_count - 1] &=
                 (CacheBlockType(CacheBlockType(0) - CacheBlockType(1)) << excessive_bits_to_right);
+
+            // To compute ceil(2^Q * x / D), we need to check if
+            // 2^Q * x / D = 2^(Q + e + k - eta - 1) * 5^(k - eta) is an integer or not.
+            if (k < ExtendedCache::segment_length ||
+                e + k + cache_block_count * int(ExtendedCache::cache_bits_unit) -
+                        excessive_bits_to_right <
+                    ExtendedCache::segment_length + 1) {
+                blocks_ptr[cache_block_count - 1] += (CacheBlockType(1) << excessive_bits_to_right);
+                assert(blocks_ptr[cache_block_count - 1] != 0);
+            }
 
             return cache_block_count;
         }
@@ -1757,117 +1767,117 @@ namespace jkj::floff {
         static constexpr int segment_length = 22;
         static constexpr bool constant_block_count = true;
         static constexpr int e_min = -1074;
-        static constexpr int k_min = -269;
-        static constexpr int cache_bit_index_offset_base = 967;
+        static constexpr int k_min = -271;
+        static constexpr int cache_bit_index_offset_base = 974;
         static constexpr std::uint64_t cache[] = {
-            0x9faacf3df73609b1, 0x77b191618c54e9ac, 0xcbc0fe19cae952d4, 0x86f1a9ad55710138,
-            0x8a8ae85102e59b1f, 0xa1b4abe165fe46ab, 0x7ef90832257f7db2, 0xfe3f0b8599ef0786,
-            0x1fa7e6dcb4aa1500, 0x6af8def44a77199a, 0x01da3511e026fe23, 0x85908a098e7760db,
-            0xdec2185e8413b918, 0xa8637fbc1541c1a9, 0xb59d7824fd0a50e2, 0xa4be64da0f38ba45,
-            0x71e4f2d57b1446ca, 0xc47ec49490d43c5f, 0xb7a4722a20f03f6b, 0xdf7c1848b344a001,
-            0xacb37294d069b4de, 0xd7794e99ec5abd30, 0xc7923d958b902691, 0x939131d011012388,
-            0x50011252797a4376, 0xeae7196b5aaea3a4, 0x3e642383295bb23e, 0x1900034b38f91547,
-            0xf9435a93ec2c9c7f, 0xb2d4266897b153af, 0x5023d96b959a334e, 0x9fcbb9f8628ebc92,
-            0xfe8c0e1a62928b14, 0xb55c276810186449, 0xc36f83c862e34942, 0x22e0c1a1a704fb0d,
-            0x4cb0cf7c859e8177, 0x020513dc9a08f622, 0xbed9951e15f252a7, 0x4c6b617f4a743dc5,
-            0x074cbd8aa74a1924, 0xcff7e2c0424f6fbd, 0xe580dc62ff7046cd, 0x0d953bee31b7d57b,
-            0x8ae9b019e2d65fdd, 0x1aa81f7b560b8b3d, 0xf5ca514ce9093957, 0x737914e3db8df10d,
-            0xc670f098869bcedf, 0x7944a992469bbfe9, 0x1188dc8b94e25b5f, 0x3629117ea346d118,
-            0x20c4c1b7f199db49, 0xd5ad723d67751217, 0x5634cd945a47f0b0, 0xfce107c5f19eeeb0,
-            0x81e3510eb38befc3, 0xd782740ad66e4e3c, 0x6910b643cee3bd18, 0x3484b938d6ed859f,
-            0x60e4adaa2ed35213, 0xf7502a586fc9ab88, 0x09598ca805c5b0da, 0xcd8f96fa9946fcb1,
-            0x35039a3cb383f1ff, 0xb9748edaa07054fd, 0x7f4ad1d77982f0af, 0xf95cc5b09274adee,
-            0x1488018ac5bb7dd2, 0xb8ac02164d3d6952, 0xe32f7fc210b04c36, 0x5733b6190f98440f,
-            0x8eaa346dcd0dc536, 0xd10e20ddaa34cb6e, 0xe3799f28a9628e49, 0x06977617756d1411,
-            0x76897c21651b5fc1, 0x99645106acf3310c, 0x4d263c69eced4f1e, 0x02c107cec1221be3,
-            0x5641c8e52294d7d5, 0xe7121f968e2b4383, 0x7ea168c87862bcc6, 0x5dcf9cdf87186533,
-            0x31900998ae1a9897, 0x59cff413e439dc2b, 0x9f25c62b0d6a2a7c, 0xcce8e69604de9500,
-            0x1459197a2b884a8a, 0x11980675721b2b30, 0x8384a87d73587b2c, 0x22aff560c608b72e,
-            0xed7635f812b520c8, 0x0cdf516676b36b7e, 0x5fb95a8637627989, 0xaaddde7001379a44,
-            0xaa82eb5b82ea93e5, 0xf5c24637c2249e8c, 0xe864824dd2c6b97d, 0x4b4c9d8c5acbe473,
-            0xe6afba7e88203835, 0x4b5caa18dc88723b, 0x9dbe5b570977ec6d, 0xf395f91d18240acf,
-            0x969e43efb034aee4, 0x33ac3d84e3519c28, 0xa407e8bf5263005a, 0x6f4047a84f1d5a30,
-            0xe7c1c3d76265fe73, 0x00fa224ffb3ce9a3, 0x6f23c0fc90eebd44, 0xc99eaa68fb9493e3,
-            0x80a241938f3fe856, 0xae2ee7330a4cedda, 0xd3e905008d23af16, 0x42666cd10a7b94f0,
-            0x506b3f6eebf013c5, 0xbcac6856aebf8cf7, 0x68c970e94b8a010a, 0xa37898be4f729053,
-            0x1a66dda9fbf6c353, 0x741af3491e882030, 0x373c255a17c6907a, 0x2e811c354d5e3753,
-            0x9cbedd7f03c749d4, 0xa560aa9df4f8b588, 0xe368f08461f9f01b, 0x866e43aa79bbadc0,
-            0x980b242070b8cfbf, 0xc6540cc78e9f6a93, 0xf290abb44e50c5eb, 0x313be22e5de15ca6,
-            0xca03c4b09e98dcdb, 0x37c99ae924f227d0, 0x28a1dfb9389b5200, 0x7dd441355475a31a,
-            0x4bdba0a5269595fe, 0xda6612839042d8c2, 0xa454de7ea5f84cad, 0x57bc7f77af640639,
-            0xd5e4a38327674d16, 0x33482be8bc169c23, 0xb7952d36345785d8, 0xb78287f49c4a1d66,
-            0x22fb2ab71c8bc3be, 0x7602ab590934eb4a, 0xdee5fbd43d5d2d80, 0xdb02aabd62bf50a3,
-            0xfa490c301900d695, 0x3169e1c7a1eef9ea, 0xf4de07b29f09794b, 0x3db339bf1f6b3dd0,
-            0x37d0c29e7d906245, 0x6802c2f2f62e9fd4, 0x67213d7fd1f28f89, 0xc55a675f34f72997,
-            0x95a0b0fa6fcfd10b, 0x65cd931e9b6fb772, 0xcdfa42a8b73abbf4, 0x8ccb772339ba1f17,
-            0xf943ef47987f9253, 0xa56fb7ae125c58a1, 0xea905dfe9fb07667, 0x55d9a13d611f26d7,
-            0x5f0b826dda65584d, 0x7faeb6845a4bc99a, 0xc1e2c501f07625e8, 0x93ff2e6ccc834ac1,
-            0xcb842e093926e86c, 0x74417064565d8c46, 0x9ab843b895629395, 0x6d7478ccec8e696a,
-            0xf658978d604f2132, 0x8804c09706407ca2, 0x17425c4d90b0288a, 0x54bbfa2f32de28b3,
-            0xbb4f2f436882ca42, 0xea68e31f45f3c56e, 0xe5ab22d615d436c6, 0x4667cab36b25c1e5,
-            0x54d01b47c59f8a5d, 0x209d5a5e872255e3, 0xacb4c73a46ac4846, 0x449f2fa4872752d5,
-            0xd84535776cea0970, 0x403744552c70f944, 0xab07743276e4d41b, 0x300b0f9f83d6f714,
-            0x549a2979de6c24ae, 0x4dc9c007f6bf0b53, 0xfe632abebb608102, 0xa6bccc455e18e69d,
-            0x0bd3498405e64f1f, 0xa15a67ff273b8460, 0x3568a892abaf368f, 0x13737ff96f2c26fa,
-            0x7b16e613c34eb02b, 0xcdb284cc00cd6dbf, 0xa36780900b94858c, 0x7928a9fee0dd5fb3,
-            0x92ae35c2db5160d5, 0x53890b6c1cb5245e, 0xe53aca31f6c12770, 0x05aaf1797e47386a,
-            0x68f4b3698a79df13, 0xf4c9038421407123, 0xe22e7e267bf37032, 0x9deeaaa093f850a9,
-            0x580936ad8d356c5f, 0x9781860af78adb18, 0x317c1700b2ea9d85, 0xc53bc56830c16ece,
-            0x65a3ba051204b754, 0xe31cd072d9ffba60, 0xac04b1ea9cd757cc, 0x87e003bd4578fad1,
-            0x30c0db82e81faa90, 0xfe12ffeb250c7a92, 0x1beb5d283ba4ab77, 0xb684034091030b25,
-            0x63d81b69faef27e5, 0xef878faa4ed19b05, 0xdd00f5969c095015, 0x156b1b031fe1b681,
-            0x49dd886f8a4f1c26, 0x2dcc149062166e58, 0x41c9e01459cd6aee, 0xa1d9235404eece08,
-            0xcbdf5d0cf4e706fd, 0xbd2bb5ba508c133f, 0x608de7633886741f, 0x23ff055389de2bf1,
-            0x621a789e188d0e35, 0xd4c221caa1d64988, 0xc47179d1dc6ba95e, 0x83d8119ae57cb4b4,
-            0x6a7ed9ba53f6f252, 0x45c3873d0fd9e087, 0xa3f2624f6bb8e1c0, 0xb3128575aa480f3d,
-            0xafad6eef542f7e54, 0x18ba36122602a548, 0xee2e39c9292e0409, 0x894ebef05346790b,
-            0xc3d7de2054863dc1, 0x36807fc21bb4f7b7, 0xb607ee6258169d92, 0xaf82ad3b568acecc,
-            0xb0ebc555fad595bd, 0x24a045ad2ee13ee0, 0xa2660e3bada54186, 0xf6435d9a7176ee49,
-            0x453056ccd7ac8e2a, 0x15809447fe6348a4, 0xdc36b2fd6dd8fd90, 0xed26a0f28624656c,
-            0x84a9d9b0b5e286b7, 0xa8fbc0dc46868b8c, 0xfc722faeb416da61, 0xc643af1961fa157e,
-            0x6219a5f27d1d2476, 0x37bc4817101b446b, 0xefcdf01c14551724, 0xd5d422b6ef96c812,
-            0xf3a7757a6adfd13e, 0x508f194293fb4aa6, 0x87df92e8982baace, 0xf88df4f9d9ce58e9,
-            0xc00d5c65b7250b4a, 0x14f98d5be273e0fa, 0x56dbf535a414fb68, 0xba048c3cea5297af,
-            0x8c3de52fa02c9953, 0x1573fe3173077890, 0x842e9e8ce7268b8f, 0x66dbc895a96b83dd,
-            0xf4c96e75264d2dc1, 0x5523343edfde0dc1, 0xfa13b18e8300abd4, 0x2649df17bd6764eb,
-            0x3d4ed55919ed727f, 0xba1a24c9b0925c80, 0xe22187f6ff5fa8bd, 0xd2a43d57ee91325d,
-            0xdc8b9b55fb862b7a, 0xcb50d0973e9187c6, 0xb69aba9eed372302, 0x2c8e8385c52a91bf,
-            0xdb9f6eeacba5efeb, 0x26b74e8782716684, 0x3c025660e5ce6e42, 0xee0350a821289df5,
-            0x89b2396a860f0799, 0xfc24600b8c11d17d, 0x346797ec2e1fbf90, 0xd9f480a1508dad6d,
-            0xfb3325731dc413c1, 0xd1c5ff42bb2f484b, 0x35fed4cb02a9f2c4, 0xe9312a4d27e6c9ff,
-            0x09aa9da7d58a7f11, 0x2953a320144a35d3, 0x18e45202be8f6913, 0x7efb55fb05b68ee3,
-            0x1594c0398ad4fe2e, 0x8f0ef9f55ea77343, 0x7b80bade36851dcb, 0x1d32a3c8db4dea95,
-            0x7a6e22691703d08a, 0x313396fd4b3b0e02, 0x89ac60760edfc43f, 0xfb6f49ddeca390ff,
-            0xda3d5a92f72bb5a8, 0x861b006a38c92c6d, 0xa9b2513e46170ba5, 0x9a3284d72443382a,
-            0x27c25969175ee8aa, 0x1aecc0966b340597, 0x84a242943f65ac2c, 0x02b992fbb514b4c4,
-            0x2f275a8f2eb243c8, 0x46d96220c2ed9960, 0x249573a0e3864909, 0xd4708baf1ae94555,
-            0x74b71bf2c0cb09a8, 0xb26ddc65a7e19771, 0xdde5beb13553778f, 0x8f9b99471efd937f,
-            0x67632c947fd5a063, 0xf878417b6e279519, 0x42dc98eaf8a7da98, 0x947159d5b2010a4c,
-            0xa2a66d7ee3d97c46, 0x264958585bbe5a30, 0xeca6ec7c296072a2, 0x3ac06375e59ccd40,
-            0x8aa615bfa84c100d, 0x9238657a036ce934, 0x3bd8421b53607768, 0xd1ff062aa2e32770,
-            0xa464c792a14b4673, 0x0c5ecedb89ddbeac, 0x6e6d77adfd812163, 0x9dad0e4647619e3a,
-            0x55b936ced64aaa81, 0x08679d9eefd00572, 0xaceaf32f77dfd027, 0x2e8fb3e2fcef0763,
-            0x56a34cf516877eb4, 0xacaf219cc4fb02e5, 0x261e7d26ae53a279, 0xc2b320e075b3b778,
-            0x7fe434926e323ad2, 0xd5b28ffe38a95cde, 0x6010cf1ed35cd1f1, 0x9436ab060a6962fc,
-            0x8d67ee5463ec3896, 0xe5d32013618d14ad, 0x51b7f2a72d316d76, 0xba5bd53c23de328e,
-            0x2c1d15e0d86e456b, 0x8f02fe2ed5996380, 0x2ae7b348a112b070, 0xa52c98d3d22c0b0b,
-            0x1ff31533ea413d9e, 0xa5ba23b43dad5c8a, 0x596550ad3773b12a, 0xaf4ff7a72ab4e089,
-            0xebee56c4b55bf944, 0xe95477b583c6c828, 0xa26affa261bbc0a8, 0x1b2f12361edd9bea,
-            0x7bd9f53b817cc13d, 0x992820a60a4884b4, 0x8b0609cf34abc5d7, 0xb8bc83ee2bbb9f6b,
-            0xe4e3228b8bb54ff0, 0x024498983446b1f0, 0x1568505bbd95ea05, 0x48686f84aeab2c0e,
-            0x024fd9f0657feb58, 0xdd9e0cbdc30e3bb6, 0xfc463d6f30026aee, 0x7d0ffe88f94aacea,
-            0x39791220a9bdee40, 0x1eee893254c5e9a1, 0x6b697d635b6881c4, 0xf0cbe2cf45696111,
-            0xb7d65896df1f5184, 0x153f7705ba99b1ac, 0x5679fbb9b875431c, 0x9d508fe5df6de541,
-            0xc668c1dd6dc2f4f6, 0x3fded428ae283fbb, 0xc00bdb2e531908a2, 0xe0f79161b07415bf,
-            0xce30ac7899bcb3a4, 0x503f356110f9dca6, 0xbdf5ba3f4d436f2f, 0xdca78a4e95f523b2,
-            0x3234a4089eb3d7da, 0x8535ebbe6fcd4f67, 0xc83df6c8c9fbd2ad, 0x1f1f932593532553,
-            0x024c882cc20610cc, 0x9ac1436d5fbd88ee, 0x5f631b89b645919a, 0x96f37dd708ee9e66,
-            0x79c814ecf03390fc, 0xd5f3c2947079b911, 0xcca2b871993ae85c, 0x2313edc19f5cb098,
-            0x779e98a73e2e2249, 0xddf5814426b725da, 0x1cdc6404c14a86c2, 0x575e93afd81abb08,
-            0xfcdd769fd4b02727, 0x6044b80334f92352, 0xe82bd213cc3616f4, 0x0b5622e8e20178d8,
-            0x1bc96b2e503f8db1, 0x6ca92bfdb21d1fa0, 0x7854b3f21a87bdb2, 0x5d1c78f315b9bb9b,
-            0xd2dbecd7a1eaecbd, 0x460d7dbf6f78bc46, 0xcf7a9be2d925ee6d, 0xe86eea16500dc47d,
-            0xccf5e1ac41bcec00};
+            0xcc5fc196fefd7d0c, 0x1e53ed49a96272c8, 0xb2e28cedd086d863, 0xb256369d4a4090be,
+            0xd43e40076a82e056, 0x4966180f57bf27ab, 0x73482e74799ca38f, 0x350b22de909056fc,
+            0x24f01ce8035c3a13, 0x56df68130e5614c6, 0xc0cfa8fbffb3c373, 0x49493583bd93ca52,
+            0xe50f85e8af10f9bd, 0x6dec5eca4e77e794, 0x2a7085885afc5989, 0x27713fb587e5d5f5,
+            0x3bbd3e40458cfad4, 0xa9c85a68d0a0f240, 0x35ecb8a3196ffb00, 0x5d0e6c51eda9db73,
+            0xf1ae9bc8cb513f1c, 0xedfb556d0b3ce425, 0xde2347df72a867ed, 0xd7200175295c2a54,
+            0xe47288046f4127ce, 0x9de50ff151a99f48, 0x2f93ca994bae1501, 0xcbacf92a3c5cb255,
+            0x1b8c41fff3a71062, 0xa7a17e0791f14181, 0xda7f1272fad8ea8e, 0x243fcc407aa5c4d1,
+            0x05881640c0db8b6c, 0xcf60100bcd51fee3, 0x41fc585cdb88fe1c, 0xf0bd574e5574ca2b,
+            0xa1e3de8a47c813c5, 0xa404ec37045a05b8, 0xc249554416a0ab81, 0x7d346f75e7ef4f92,
+            0xb4ae95375bff6a3e, 0xc42613286e18e342, 0x8c7c4bc7f39feb29, 0xf451130dbb6b8d67,
+            0x4ed6ff12c528cb4e, 0xbc0398f27e2e7f02, 0xe43b4f2f30fc71df, 0xdb805653fb2e4549,
+            0xcb75663b492c05d9, 0x279992430d135fdd, 0xb912ffbf694d473e, 0x7d0fb5cd0bc31c24,
+            0x5a31b13a2305d635, 0x961a44e862d1253b, 0x942c7ff0054684d5, 0x1940f85b9619e4de,
+            0xf56f6fd48770db54, 0x2048e3619d3ecbd1, 0x5ad267734b626ab2, 0xd497aae5da836756,
+            0x257b47819a7268a2, 0xc0dee1778d0d99b7, 0x2760893b31197df2, 0x0f4b39615a1fef1c,
+            0x3d28f4595f045f5e, 0x68198cc92d282646, 0xab840ed7f34aa207, 0x594af70a7c9a8466,
+            0x0d3c447b36c4adaa, 0x73a9783d66bafd7c, 0xd57e97a24173229a, 0x3fedddcaf2d920ec,
+            0x5ab0cf0f7fa05a5d, 0xfd431db310bef10c, 0x86906a275fe9d403, 0x35fe7c65c7e73794,
+            0x70e557bb0b4edf3b, 0x0c354dcc39e877e3, 0xb2e1b87c2114a94c, 0x2d3b357c0692aa0a,
+            0x078e2bad8d82c6bc, 0xd145ed52ec1f36b4, 0x311beb063cd5e1c9, 0x3749ae20c36e3685,
+            0xe072f5b34ca93fd2, 0x235b11a17ec97da7, 0x06250127266ca206, 0x6680720c217f66c5,
+            0xcf72ae1cbf4a6037, 0x48566c5cc9896704, 0x0f888f4e9059a4c1, 0x83bf4fa13d8895ec,
+            0x852f3253b65a7f41, 0xe95fc7edbc424d2f, 0xcb6f4c2902395ee8, 0x19b77e8a5b4d988e,
+            0xf34a7d1c3ee79f3c, 0x7ee67dfe30e8b317, 0x7df1d26a0827dbad, 0x1144e6575d72e369,
+            0x6a1b48aca94c3fd3, 0x1c18223394282d5b, 0xa9d6c3b9491f2706, 0x0654a330021b79c4,
+            0xa07d573c4af1c42f, 0x856fb5bb9d8f5fc7, 0x029239eeaf410c32, 0x3af35a890e51dba3,
+            0xe10b9ccd95a5efea, 0x6b34767c12ddc8b0, 0x27408660be2df000, 0xcfb01909478fcb1c,
+            0x64fef9a6c8de88bd, 0x53399a4e4227ca92, 0x6e9fc3e475398585, 0xa7ff464cb86b3a8b,
+            0x1a1f274613e7a315, 0x7cb97c89a667bbb2, 0x85e23b46f90aa7cf, 0xdfd40cc7a241b280,
+            0x227f15e9a4003db7, 0x573a0ceb3b9a35fe, 0x15e6aaa07898bcf1, 0x9825c14c84358b11,
+            0x1f92b5ad7f29abca, 0xf485787a6520ec08, 0xd23699194119a5c3, 0x7387b71906614310,
+            0xf6c848d98da56f90, 0xb1938b629f31890f, 0x07dabfd496c5a9c2, 0xdc890272a1074c24,
+            0x9bc0bb46928b885e, 0xdeb2a85e587aeb58, 0xa90e81a302cee759, 0x400d36496828de45,
+            0x9b14c3dc6342c577, 0x6df5a6e0a9f9632d, 0xccc1e5123df02597, 0x693db13b76ce9376,
+            0x69e9a8a5a617565d, 0xdaf1afd498df0bdc, 0x21abb48db201e86d, 0x7fb942dc0970da82,
+            0x00bc8db411d4f56d, 0x23b0de1593369d1b, 0x5fad34051767bdae, 0x347bf3f22ac4f809,
+            0xc58edf98b59a373f, 0xec4724bd4189bd5e, 0xac6b5856629eedf5, 0x90abb3a1ebbdad97,
+            0x45eb4d50ce6332f8, 0x40b7ba963646e043, 0xcbba5ba0cdaf5509, 0xffc3e5a10722b689,
+            0x84c1dab405552d60, 0xdbd61fbe5b737542, 0x16f7ad8a8e05ba47, 0xa54e5f27a84b5da0,
+            0xfcd9c0d8597087a7, 0xb78d63072b9ed4ca, 0xa0dfaba295941a9d, 0x0b03d63a2529dcea,
+            0xf9de194ec523af42, 0xf067e145959167b6, 0x81f01d7b5721d9fd, 0x3448d7b1c390396c,
+            0xe364b5d83b11154d, 0xf2607730e56a6b03, 0x038207de93a3f05c, 0x8b0cce521bd90a65,
+            0x5296cd8e2d4d052b, 0xb162cb83424db7bb, 0x1acb4c8a011736f8, 0x6fc6c167a6a359d1,
+            0x3c630164b93172d4, 0xbb22df25e590decb, 0xbbb6677dc03994e5, 0x014df95ff0ece4b7,
+            0x2fde4568bb259c7d, 0xb0d32add9f0192ac, 0x64cf917fae4a4985, 0x70ea94e7e6f7019f,
+            0x933cbdb13c062e37, 0x47bc3cf523a283f1, 0x10217cc4f3bd9f97, 0x6dcf0a47a23c3775,
+            0xc07eef089dec2a40, 0xd56c8a963b01272f, 0x6b4be3385978b732, 0xbbaa3d4df50af0ac,
+            0x62aa54e844fe7d4a, 0xcacccbbfde1ab76f, 0xdab42c1f3fca4472, 0xd4e20c2916a0eb76,
+            0x4e00170c17c372a2, 0xbed384f0c7428321, 0xb5793de5a69eda73, 0xc401d3dba21a4c9f,
+            0x8e86c05e1a63853b, 0xbd264515e7873f8a, 0x0396973fe09f1e7e, 0xe6786710a61a5152,
+            0xd9902132f2e24ad6, 0xb17e17707c7e4452, 0x1ab18d106daffde8, 0xfd8f944f93bdec82,
+            0x7b570dd17e07cb9f, 0xea591fb1f2db2afe, 0x278f761edeeea5d5, 0x0049814781858ccf,
+            0xce06cac7426e6b70, 0xa63bb1951b672971, 0x3053c7c258aeb716, 0x66590d78a05d8282,
+            0x2723fd36304c9dc5, 0x20cd299b8c40e3bd, 0x822f58eafad0994c, 0x84e7e08625c65000,
+            0x9d2d30a9ccda4b25, 0xd3d90a2bf9ec583b, 0xdc7058848ce53c07, 0xbb3daf6a840f8643,
+            0xc29c626efcc1af43, 0x49cf5f5127b3b5ad, 0xac314093db83ac44, 0xef2f8fb5cee0e1a2,
+            0x7f9ba94bcf701709, 0x9d0243c163cdaf6d, 0x19fec8085b03bb5d, 0x86443e9d9fb3b0ec,
+            0x76ecb60776a2e3bd, 0x7beec07060605a70, 0x8c4c58a31da02e8a, 0x85b2f70730aeb0f4,
+            0xabb46f048cf0b22a, 0x7113a738f6fab1e4, 0xea27a055b82fb00e, 0xe59b0d47e4434641,
+            0x2357c5dab8a49a58, 0x383c2f9f3ce238a0, 0xa1214e7123a90e99, 0xa3d216b25141e59a,
+            0x3c07de164b0bb4f4, 0x81bb792f77d3f787, 0x7a4b198c6037a6c4, 0x29a821bfb144ce6c,
+            0x8a61e074da415980, 0xac74be931bfb9cda, 0x155916a3016bf0da, 0xe2c347a9f3ed2b29,
+            0x81ca36dbc5187d40, 0x62e3b48a9a9d3ec4, 0x422d497fb48c139c, 0x1e16aec906d67705,
+            0xb0e0df9ed59268ab, 0xdbc1682b7d8c26e3, 0xf7dea7068bb3ca84, 0xc80a5af5e5764cb8,
+            0x11d72e2e81654dde, 0x802c6f4727667ea8, 0x846d697e8f204fc3, 0x4686bb9eb24b1299,
+            0x701833f5fa743c1f, 0x6e065e876e8649eb, 0x9638d6e8afb1b14e, 0x645631e21099e9b5,
+            0x651b445d775ab0df, 0x5d9d842205f31974, 0x8eafbd51f9caa9f2, 0x628ec824cf30d215,
+            0xd17a6a87687e9449, 0xdfee445f2ca513d3, 0x73a877686a9e006d, 0x29fc3d1470046708,
+            0x5838d17199dc5b48, 0x721e0fd5b5449410, 0x960e81c832d435c1, 0x297b9da2405e0293,
+            0xe1f35bfade12bc1d, 0xd015b4f5694dcead, 0x5ef3bf28ded7e8db, 0x1b375f2f54d4a2b1,
+            0xbb6a21e606390529, 0xd9e3e9134da6c146, 0xf3d4236a7917e12c, 0xfe5b45cc2c1645c7,
+            0xfae4459abfc08d22, 0x785629ccf73e3ad3, 0xe3737cb14f6f65e3, 0xd21a1489a90c9144,
+            0x1a1e3319d4a38490, 0x73247bafc344b507, 0xa7ef8c1878053802, 0x5430a2e4c6a2ebe5,
+            0x63d58b7200368e4d, 0x316017dd36646214, 0x672c5e884e85f5af, 0x73f2360290fbb262,
+            0xceca95ebbd532720, 0x47993a1414efe278, 0x911623dba4b4e122, 0x71d83cf4e8da322e,
+            0x5bccdbbfdb66cf2e, 0xf81887fb96ab91b4, 0xb1dd42e7736e1e3e, 0xd26979d473f3ca61,
+            0x4e2d3e6794a0f529, 0x998de9b2dbf7654a, 0x3d0ff939ca26d64b, 0xecdc6e158acecfcd,
+            0xe58976928af0ded6, 0x22d26cd93100ac14, 0xe6cc2ef95ef6dfe2, 0x216a24cd8d560525,
+            0xe0a9c573f0f4fd05, 0x570dba55bd10be58, 0x055b13a71dac694c, 0x8579682baf0dfced,
+            0x47dce842159e1c86, 0x72fb7156a2b1ce6d, 0x3a2efedc180103e3, 0x674acb05a0d6e351,
+            0x3596e8a22a81b284, 0x8ecc4c4950cb8204, 0x7a1def9538f58c52, 0x6b7b7b3518deeafc,
+            0x494b57cdf9903303, 0x52a986d963733488, 0x102c5a25c123a5bd, 0xca6e725c9b3f51a8,
+            0x07d3f1bf70069eca, 0xa951148acb2efa5e, 0x47c44388998b914a, 0x3f9c83e746b8de39,
+            0xcaeadaebdb698013, 0x1b02e11fb4e6dcaa, 0x2680b3f6f8bda5a4, 0xdf352de3aedc8dfd,
+            0x630ea837fcb8385d, 0x7edd58d79c694158, 0x3fc5fd2b26fe54e8, 0x19a42d1ac8eadf5c,
+            0x60bf3c991660f478, 0xf753c84ee01e98eb, 0xd0c6068832c3760f, 0x4eefa5976049a659,
+            0xa102f0f1e43a1032, 0x43c71126ba90897a, 0x279ae100869594fb, 0x77de4c068f579b4b,
+            0x2b2f0a6878a0d568, 0x7fdb1506d48a5818, 0x07a5410b686cecc6, 0x788235105c2f2974,
+            0xd36aa9828b16c6c8, 0x230745dff250af51, 0x57db933c81e18cf0, 0x1636e615700efcab,
+            0xf6e15568dd35f61a, 0x75e69b72ed8195ef, 0x0b1f9c27ed375a6b, 0x9e879260cfa804ef,
+            0x261f8c458b92fa32, 0x3722228147032222, 0xf33e3bd5a08a9dde, 0x65dc8d8be09de195,
+            0xb8b9f1b5c19fb284, 0x7c8fa1c02e9f0756, 0x0a065bc79283dad8, 0xf8ef9c8fafbd8af7,
+            0x164911fafa645de0, 0xb2cc165d7ab3a327, 0xfeccbb72a578077e, 0x47a3d87dd24cee41,
+            0xb98f69dc5c63ac88, 0xe7b1760566177a07, 0x266f5da3beae5570, 0x969f4627b63c01f4,
+            0xb83a8e2af4f06148, 0x74235b38517382f9, 0x2d17c078a9a40d5b, 0x7f70adbcf8b3f22a,
+            0xda1f2c9ca3011302, 0xb8e2dc6a371ad25a, 0x59af7f58d3e31c16, 0xfc4801b3283de5f7,
+            0xd0c61b65eb2d93e0, 0x6bc4d9629adf3098, 0x26d20fdf6bab5ac7, 0x11cf4332de481638,
+            0xb8f513d7289780d4, 0xbaf76387987e6ab9, 0x7b18f5430bf6f74c, 0x20843400a1d95cd7,
+            0xaa26d11d6a10cc5a, 0x6899146442440955, 0xbb9bf72a5f214d32, 0x5e9ea055413ab751,
+            0xcb1754690996a6a7, 0x08e741a38f3953b4, 0x43911052a7d9a7ec, 0x2ae6a7df9a0118c2,
+            0x7a1756eb8ef7bfb4, 0x4bb1a4ddd13facb2, 0x951398938123e46e, 0xae357b83184a1621,
+            0x8fab4ece3954b298, 0x72a88d7802ce64f0, 0xc511a7ba4702729c, 0xbd4b5ee7307bf70d,
+            0x7b446437f0edb951, 0xf7b162a0a9d56cff, 0x32cd113af849e5bf, 0x1e9c99b2a88f8823,
+            0xd917a9b0350f7834, 0x878cef6ad9bf40fb, 0x587614b72cd13ef2, 0x6dcf66541c634e44,
+            0x7ac80ad28d730bef, 0x1e712bacc101dcba, 0xbd2ec0edbcf06a0f, 0x43a35e9d57fc82a0,
+            0xb956fead7fb3bead, 0xa61225dbf0f0232b, 0xa89cd3f0aed7c235, 0x460fb00a84ba0000,
+            0x0000000000000000};
 
         struct multiplier_index_info {
             std::uint16_t first_cache_bit_index;
@@ -1875,66 +1885,65 @@ namespace jkj::floff {
         };
 
         static constexpr multiplier_index_info multiplier_index_info_table[] = {
-            {0, 0},         {185, 258},     {440, 586},     {769, 988},     {1170, 1462},
-            {1645, 2010},   {2190, 2628},   {2810, 3321},   {3502, 4086},   {4275, 4933},
-            {5114, 5845},   {6028, 6832},   {7015, 7892},   {8035, 8985},   {9115, 10138},
-            {9155, 10251},  {9246, 10415},  {9388, 10630},  {9581, 10896},  {9825, 11213},
-            {10120, 11581}, {10466, 12001}, {10864, 12472}, {11313, 12994}, {11813, 13567},
-            {12364, 14191}, {12966, 14866}, {13619, 15592}, {14323, 16364}, {15073, 17113},
-            {15800, 17838}, {16503, 18544}, {17187, 19226}, {17847, 19886}, {18485, 20526},
-            {19103, 21141}, {19696, 21735}, {20268, 22309}, {20820, 22859}, {21348, 23388},
-            {21855, 23896}, {22341, 24382}, {22805, 24844}, {23245, 25286}, {23665, 25706},
-            {24063, 26104}, {24439, 26480}, {24793, 26834}, {25125, 27165}, {25434, 27475},
-            {25722, 27763}, {25988, 28024}, {26227, 28267}, {26448, 28487}, {26646, 28686},
-            {26823, 28864}, {26979, 29019}, {27112, 29153}, {27224, 29263}, {27312, 29349},
-            {27376, 29416}, {27421, 29462}, {27445, 29485}, {27446, 0}};
+            {0, 0},         {176, 249},     {427, 573},     {750, 969},     {1145, 1438},
+            {1615, 1981},   {2155, 2594},   {2771, 3283},   {3459, 4044},   {4222, 4880},
+            {5058, 5789},   {5961, 6765},   {6943, 7820},   {7959, 8909},   {9033, 10056},
+            {9068, 10164},  {9154, 10323},  {9291, 10534},  {9480, 10796},  {9720, 11109},
+            {10011, 11473}, {10353, 11888}, {10746, 12354}, {11190, 12871}, {11685, 13439},
+            {12231, 14058}, {12828, 14728}, {13476, 15449}, {14175, 16221}, {14925, 16973},
+            {15655, 17701}, {16361, 18408}, {17046, 19092}, {17708, 19756}, {18350, 20398},
+            {18970, 21017}, {19567, 21614}, {20142, 22189}, {20695, 22739}, {21223, 23271},
+            {21733, 23781}, {22221, 24269}, {22687, 24734}, {23130, 25178}, {23552, 25593},
+            {23945, 25993}, {24323, 26370}, {24678, 26726}, {25012, 27060}, {25324, 27372},
+            {25614, 27661}, {25881, 27929}, {26127, 28175}, {26351, 28398}, {26552, 28599},
+            {26731, 28779}, {26889, 28937}, {27025, 29073}, {27139, 29187}, {27231, 29279},
+            {27301, 29347}, {27347, 29393}, {27371, 29419}, {27375, 0}};
     };
 
     struct extended_cache_compact {
         static constexpr std::size_t max_cache_blocks = 6;
         static constexpr std::size_t cache_bits_unit = 64;
-        static constexpr int segment_length = 76;
+        static constexpr int segment_length = 80;
         static constexpr bool constant_block_count = false;
         static constexpr int collapse_factor = 64;
         static constexpr int e_min = -1074;
-        static constexpr int k_min = -214;
+        static constexpr int k_min = -210;
         static constexpr int cache_bit_index_offset_base = 964;
-        static constexpr int cache_block_count_offset_base = 28;
+        static constexpr int cache_block_count_offset_base = 27;
 
         static constexpr std::uint64_t cache[] = {
             0xc795830d75038c1d, 0xd59df5b9ef6a2417, 0xfeb13da03da3a72f, 0xa1be04416f774ca1,
-            0x85f538987c4d8ab3, 0xde9c74098f2c4f21, 0x6557ca48db07a0b4, 0x3624edab9224f3fa,
-            0xcc249c832997969a, 0xf881dd24a9490435, 0xd21cc1f42181d822, 0xd292253741544b1e,
-            0xc070fb555f3ae9cd, 0xd667388bb5d80f11, 0x6f5d3e14a823683c, 0x8dba6f7d12a4670c,
-            0x1228cbed77672fe2, 0x26b047f2f1dba1ec, 0x39d4a22fafd3b8e5, 0x7d2606be8f9f9d69,
-            0xc3e52bfca1b77074, 0xf717ff6d3d05837d, 0x52757bfaf43a0990, 0xe1c53a3404eb3e32,
-            0xd70be1d88abc74bc, 0x2fba0d6227b856e8, 0xa81f606fbc2f18a1, 0xecaf8cc74e28ed28,
-            0x1f44aaef8a1a5ce0, 0xe8fbbbbe454fa246, 0x54f3da0c01092b10, 0x3a3c88aa64156f94,
-            0xbf9f3846d1891263, 0xb4499fde762d5a2e, 0xa49984de00a14a88, 0x9e9773e3c16e08f8,
-            0x5f4dabbc3d426851, 0x213b5a1b2683fe10, 0xcfb6434ba42e4d56, 0x664be1a3c7ff1284,
-            0x56f0fb1705e5fee3, 0x8e007bafa882f91a, 0xfcb441072ce66d79, 0x739727f3b13fd95a,
-            0xecd25743d4788d55, 0xe04d5ce009daf310, 0x7a7ed61e1252b38e, 0x97c12ad228101971,
-            0xc8f99335e063566e, 0x1ff37735b4e59984, 0x00a95d35eac354f3, 0x4215cd46e417018f,
-            0xb1dc73a19a5a3743, 0xe8da836e84bce980, 0x611c7329781dc4d2, 0xdda2b44f7f9ca6e7,
-            0xfc54a476efe25a67, 0x783fad80aaea25fc, 0x2ee0b6c68be2c365, 0x97bb899503c37877,
-            0x71f8a426e142a90a, 0x0a111948aa20daab, 0xabd53158b4bee362, 0x2b460d13808c7ba3,
-            0x84b34b8fd4e6449b, 0xdfe625736a4520d8, 0x1000568c1967a2af, 0x11bbaba0703d232e,
-            0xdb4307c03d64a104, 0x57de7bb566fc6f34, 0x8d0a4730d418e715, 0xd08442268fb658a4,
-            0xab37633d7abfec56, 0x095c3aaa0dd69084, 0x8b031cb8efcfcecc, 0x726122160bca6e87,
-            0x82909bde51437b9e, 0x18fec9ae38fd6bcd, 0x0c0ece2e759b726d, 0xde6685baa0d1682f,
-            0x1c7b6bdb1899f8d1, 0x29e6a5f93f6281f1, 0x88b98c5e9256daab, 0xbeab048366e6a0b0,
-            0x5577249aa4ce1eba, 0xa13bfeb382d4458d, 0x0c3b3e6c299e5f12, 0x19fe581d0189ef2b,
-            0xc58936f302faa732, 0xdafcd67a0b5fec62, 0x73bc103b1f883f8c, 0x82d2cbbf338f824d,
-            0x405744ff1c9bf1ae, 0x8c12f8199b4271f0, 0x1c709f8fd90b9016, 0xb9fefbfe4bc9efe2,
-            0x3b3fa9caabe5cbb0, 0x550aae6e704ff31c, 0xd79f0be8277ef733, 0xf9610f9ed2ca3b49,
-            0x362f4bf27277e4b6, 0xda3a27d731b60963, 0xd0299bf96a011bd3, 0x99fb6af5fb75cdcc,
-            0xeacb99dafb50e45d, 0xbca872b6c386c6d3, 0x181b2eed1490f082, 0x0a4e88121a2ba4ec,
-            0x8d37b83773124d45, 0xcb254152635fd290, 0x22bce8ade391f4b1, 0xa7fa93d3b5825776,
-            0x6333a751b80a7489, 0xfcd114dcdf25eac8, 0x6774e1afe756223c, 0x02cd432b967ab32f,
-            0x11c5ec68f2c09c73, 0x128aab6a0212292f, 0x3f341770fba7cf3e, 0x5274792892fe09f1,
-            0x884cdcfa09111cea, 0x8b3f4ed44270fc2d, 0x84423b816ee82b19, 0xa2947635a9d218ba,
-            0x7cd4a1f590f12fb0, 0x9b3cc19bd9ddb8be, 0xd8d025fe97e2552d, 0x392f39a9cf584ddb,
-            0xf299c1bf79000000};
+            0x85f538987c4d8ab3, 0xde9c74098f2bafaa, 0xa14c221ad536f7af, 0x67d5fe0c0a0ff7f3,
+            0x0de9d31958870e22, 0xc5ac162d4339a052, 0xd0d1d97e0d614173, 0x802b4105b336f99f,
+            0xb2d984f4f566db5f, 0xb533e21c804345bd, 0x1f326438a9241b9f, 0x9c5ef58109bb5397,
+            0xa8df5efabc5979c8, 0xfca8d3ffa1ef463c, 0x1d897747ed9d851e, 0x7e089e51c5849436,
+            0x84991b0e100065e9, 0x5b739863e3229abf, 0x20ad3b847a221d5b, 0x54cfe86e61fe7942,
+            0x52100905ac4685b8, 0xc9d071c69307a1b5, 0x443f79e206bc53fe, 0xad0d5e38f3213d42,
+            0xc7e9ffc57eb87287, 0x899f2e376c6750de, 0x277c9dee7a4ad4b8, 0x1eef92c7ccd0b1ed,
+            0xa88809578b3c883f, 0xacac074718d3a861, 0xc2e7a8075f6f48b7, 0xf7575b91c1228c74,
+            0xa6156587fb4d33e7, 0x10f12886b5f4e7d3, 0xf1f8c78ab01e4c8e, 0x2ca5131d29e6d9bc,
+            0x31e1fa72ff00a896, 0x0d72272b42d76b8d, 0x4ed9b2e8caa13ccd, 0xee30cdb21a96c453,
+            0xcfb26c0c4ad47994, 0xa33653a0ffed981c, 0x1d6019d9050b2bd3, 0xf70f4cd944754727,
+            0xcb2734119d3b7a9a, 0xa51823e34a7eedeb, 0xd4b46f0599fd4151, 0x0331d72aeaf71658,
+            0x6ff327d536b74698, 0xfa475791a569d10f, 0x96e017d694487bcd, 0x671a0192ea53fcdf,
+            0x4f028faa0591cee1, 0x10848f82d5dc343b, 0xf046f580a6dc57f2, 0x388f0f4ecd04a7c9,
+            0x28069cf3cb733ef1, 0x8cece59cf233b0f6, 0x711334bcda45f1d3, 0x625ba277930142f2,
+            0x9981c43f8a015832, 0x9b927206988a3207, 0x710462b1f77da9a0, 0xb36caa2112ab8b91,
+            0x9b31ca21b110d5d1, 0x70c5cb8ef4ef21e0, 0xbfff827fd7fca291, 0x6083c84685eb1511,
+            0xd86ad0063cca31d8, 0xbb805953a1297b88, 0xf63d7956e0d98578, 0x80976336e47a55a4,
+            0xe26491b9c8dbbfc5, 0x405b99dac54b48d5, 0xf5033bae4a2c613a, 0xbce5f30e3c3ae7a5,
+            0x9f0efb302818554f, 0x83412b3c79e33e50, 0x856a8777d6468b5d, 0x9bc1690affcda2f1,
+            0xda1dfde453a3d469, 0x826c9a87361f35f8, 0x79c1e1fb5e140cbb, 0xd2e5d0703d1e4d7b,
+            0x4e263e53ab13676f, 0xbae3ec77c07755a8, 0xc81109b422e30769, 0xfac9d2aca5844f05,
+            0x87a7e9d9bb1d9c4f, 0x8c8f408fac935e4a, 0x635e65532989419f, 0x4efcc4d7ba319b9f,
+            0xdf2809505710bd22, 0xb5e4edb89cda5b59, 0x12ad5b9910fe8ad6, 0xf8e45c246285362a,
+            0x972bc5046accbe70, 0xb4de428c28ebec9d, 0x02e47593c24145ee, 0xaa90a540c28355e2,
+            0x0367ac12d7fdaaeb, 0xe2187d19d06dde15, 0x649e162610192e14, 0xaf30e9d3c4b190b8,
+            0xbd04d772b36d826a, 0x2d6275f5b7343bff, 0x7ca39b6c06ae7414, 0x227c995776fbefa9,
+            0x95a4627d7d96416f, 0x1db95b9aed4e0161, 0x611d81ca92cc44fd, 0x8c42c7adfa974d94,
+            0x729442cc23490c8f, 0x1ba514d154d1a3a5, 0x4f957b16e69a7395, 0xad7d0af4f070aa2c,
+            0x7cbef9d2c3f5c30b, 0x66ec52ce16d31ef2, 0xe4dd4f9ca6b07c1f, 0xe3ffcc165d60011d,
+            0x7955021b42f8a908, 0x7d3bbcd24c62b3b0, 0xe824b0a990000000, 0x0000000000000000};
 
         struct multiplier_index_info {
             std::uint16_t first_cache_bit_index;
@@ -1943,50 +1952,50 @@ namespace jkj::floff {
         };
 
         static constexpr multiplier_index_info multiplier_index_info_table[] = {
-            {0, 0, 0},          {365, 618, 10},     {983, 1488, 20},   {1850, 2608, 30},
-            {2921, 3931, 40},   {2954, 4216, 50},   {3163, 4678, 60},  {3549, 5316, 70},
-            {4111, 6131, 76},   {4850, 6887, 82},   {5530, 7561, 88},  {6128, 8166, 94},
-            {6657, 8695, 100},  {7110, 9148, 106},  {7487, 9523, 112}, {7786, 9824, 118},
-            {8011, 10049, 124}, {8160, 10197, 130}, {8232, 0, 0}};
+            {0, 0, 0},          {382, 648, 9},      {1028, 1560, 22},  {1939, 2736, 39},
+            {3062, 4125, 60},   {3132, 4461, 70},   {3388, 4983, 84},  {3830, 5690, 98},
+            {4457, 6494, 111},  {5181, 7217, 123},  {5824, 7860, 134}, {6387, 8425, 143},
+            {6872, 8910, 151},  {7277, 9315, 158},  {7602, 9639, 164}, {7846, 9884, 168},
+            {8011, 10049, 171}, {8096, 10133, 173}, {8100, 0, 0}};
 
         static constexpr std::uint8_t cache_block_counts[] = {
-            0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x56,
-            0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x45, 0x23, 0x61, 0x66, 0x45, 0x23,
-            0x61, 0x66, 0x66, 0x56, 0x34, 0x12, 0x66, 0x66, 0x66, 0x66, 0x56, 0x34, 0x12,
-            0x66, 0x66, 0x66, 0x56, 0x34, 0x12, 0x66, 0x66, 0x66, 0x45, 0x23, 0x61, 0x66,
-            0x66, 0x45, 0x23, 0x61, 0x66, 0x56, 0x34, 0x12, 0x66, 0x56, 0x34, 0x12, 0x56,
-            0x34, 0x12, 0x45, 0x23, 0x41, 0x23, 0x31, 0x12, 0x12};
+            0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66,
+            0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x56, 0x34, 0x12, 0x66,
+            0x66, 0x45, 0x23, 0x61, 0x66, 0x66, 0x66, 0x45, 0x23, 0x61, 0x66, 0x66, 0x66,
+            0x56, 0x34, 0x12, 0x66, 0x66, 0x66, 0x56, 0x34, 0x12, 0x66, 0x66, 0x66, 0x45,
+            0x23, 0x61, 0x66, 0x56, 0x34, 0x12, 0x66, 0x56, 0x34, 0x12, 0x66, 0x45, 0x23,
+            0x61, 0x45, 0x23, 0x41, 0x23, 0x31, 0x12, 0x12, 0x01};
     };
 
     struct extended_cache_super_compact {
         static constexpr std::size_t max_cache_blocks = 15;
         static constexpr std::size_t cache_bits_unit = 64;
-        static constexpr int segment_length = 248;
+        static constexpr int segment_length = 252;
         static constexpr bool constant_block_count = false;
         static constexpr int collapse_factor = 128;
         static constexpr int e_min = -1074;
-        static constexpr int k_min = -42;
-        static constexpr int cache_bit_index_offset_base = 964;
-        static constexpr int cache_block_count_offset_base = 9;
+        static constexpr int k_min = -65;
+        static constexpr int cache_bit_index_offset_base = 1054;
+        static constexpr int cache_block_count_offset_base = 10;
 
         static constexpr std::uint64_t cache[] = {
-            0xc795830d75038c1d, 0xd59df5b9ef6a2417, 0xfeb13da03da3a72f, 0xa1be04416f774ca1,
-            0x85f538987c4d8ab3, 0xde9c74098f2bafa8, 0x09a003c7c6610e49, 0xe024d5164b0c06fe,
-            0x0a1b59c84d1cd5e1, 0xfb4e3ce9ae1127b3, 0x1f74b35f1676bfb5, 0x5a6178a7e4154997,
-            0x225ececfef86100d, 0xc22500a646440317, 0x65c84e3389b267ed, 0x1940f1c61c55f038,
-            0xb237591ed37f36b6, 0x60f7d70f938a8cec, 0x61ac155bfa498e99, 0xfcccfece1bc842be,
-            0x9d8e1053e36ea148, 0x86c50a16027a5f18, 0x51d54151b6a8548c, 0x0948ac38e897f287,
-            0x3e02f3738f008c28, 0x210bda09fad4a922, 0x3303064de9241afd, 0xac96ed2ce7123ac1,
-            0xed7e09d1eb697630, 0x917d014be612ed95, 0x134af22bb34b7082, 0xc8fae7340a493ccf,
-            0xc3c4d4ce0c7f119b, 0xdc473fdee580627f, 0xade69ace0fa01d85, 0xb08715d27f8d15c3,
-            0xb8338e8fc4a23714, 0x0707f1ff6f18f0ab, 0x74c1def356945a80, 0xff10925c39d4a58a,
-            0x1902651113a67bea, 0xa2aaf3ef342d37a4, 0x07c821e00c58dd30, 0x9a70d78dd04b00d6,
-            0xe4eefa6cfc4237a3, 0xdcbe67d0d272d285, 0x0e47e104fcb368b2, 0x506f6c8fe63c5286,
-            0xaee5d889b9ba7301, 0xe196f86fad1356d6, 0x0cc4a06f5dff9a7b, 0x6a5a237614bec9f7,
-            0xb96bebfab54be56f, 0xd2e9c3540f74e0e8, 0x6cf696b8295438d4, 0x1a51d3f919386dee,
-            0x72a64c135a59a1f3, 0x36ed1a9e3ad76b13, 0x089fbc1373ef119b, 0xc404188dbf4128c3,
-            0x42711d39f79e65c9, 0x19a24a2d7f39e4a4, 0xca416b907eb530c7, 0xbaf5321b161c541e,
-            0xf929f4e21d7f86f9, 0x1d3d51c141e4fe05, 0xc248000000000000};
+            0xf712b443bbd52b7b, 0xa5e9ec7501d523e4, 0x6f99ee8b281c132a, 0x1c7262e905287f33,
+            0xbf4f71a69f411989, 0xe95fb0bf35d5c518, 0x00d875ffe81c1457, 0x31f0fcb03c200323,
+            0x6f64d6af592895a0, 0x45c073ee14c78fb0, 0x8744404cbdba226c, 0x8dbe2386885f0c74,
+            0x279b6693e94ab813, 0x6df0a4a86ccbb52e, 0xa94baea98e947129, 0xfc2b4e9bb4cbe9a4,
+            0x73bbc273e753c4ad, 0xc70c8ff8c19c1059, 0xb7da754b6db8b578, 0x5214cf7f2274988c,
+            0x39b5c4db3b36b321, 0xda6f355441d9f234, 0x01ab018d850bd7e2, 0x36517c3f140b3bcf,
+            0xd0e52375d8d125a7, 0xaf9709f49f3b8404, 0x022dd12dd219aa3f, 0x46e2ecebe43f459e,
+            0xa428ebddeecd6636, 0x3a7d11bff7e2a722, 0xd35d40e9d3b97c7d, 0x60ef65c4478901f1,
+            0x945301feb0da841a, 0x2028c054ab187f51, 0xbe94b1f686a8b684, 0x09c13fdc1c4868c9,
+            0xf2325ac2bf88a4ce, 0x92980d8fa53b6888, 0x8f6e17c7572a3359, 0x2964c5bfdd7761f2,
+            0xf60269fc4910b562, 0x3ca164c4a2183ab0, 0x13f4f9e5a06a95c9, 0xf75022e39380598a,
+            0x0d3f3c870002ab76, 0x24a4beb4780b78ef, 0x17a59a8f5696d625, 0x0ad76de884cb489d,
+            0x559d3d0681553d6a, 0x813dcf205788af76, 0xf42f9c3ad707bf72, 0x770d63ceb129026c,
+            0xa604d413fc14c7c2, 0x3cfc19e01239c784, 0xec7ef19965cedd56, 0x7303dcb3b300b6fd,
+            0x118059e1139c0f3c, 0x97097186308c91f7, 0x2ad91d77379dce42, 0xad396c61acbe15ec,
+            0x728518461b5722b6, 0xb85c5bb1ed805ecd, 0x816abc04592a4974, 0x1866b17c7cfbd0d0,
+            0x0000000000000000};
 
         struct multiplier_index_info {
             std::uint16_t first_cache_bit_index;
@@ -1995,12 +2004,12 @@ namespace jkj::floff {
         };
 
         static constexpr multiplier_index_info multiplier_index_info_table[] = {
-            {0, 0, 0},        {936, 1760, 21},  {2643, 4291, 39}, {3122, 5160, 54},
-            {3743, 5777, 69}, {4112, 6150, 84}, {4237, 0, 0}};
+            {0, 0, 0},        {860, 1698, 13},  {2506, 4181, 29}, {2941, 5069, 36},
+            {3577, 5705, 41}, {3961, 6088, 44}, {4092, 0, 0}};
 
-        static constexpr std::uint8_t cache_block_counts[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xef,
-                                                              0xee, 0xee, 0xee, 0xee, 0xce, 0x8a,
-                                                              0x46, 0xa2, 0x68, 0x24, 0x46, 0x22};
+        static constexpr std::uint8_t cache_block_counts[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xee,
+                                                              0xee, 0xee, 0xee, 0xee, 0xac, 0x68,
+                                                              0x24, 0x8a, 0x46, 0x62, 0x24, 0x13};
     };
 
     // precision means the number of decimal significand digits minus 1.
@@ -2690,15 +2699,7 @@ namespace jkj::floff {
             {
                 cache_block_count =
                     load_extended_cache<ExtendedCache, ExtendedCache::constant_block_count>(
-                        blocks, e, multiplier_index);
-
-                // To compute ceil(2^Q * x / D), we need to check if
-                // 2^Q * x / D = 2^(Q + e - 1 + k - eta) * 5^(k - eta) is an integer or not.
-                if (k < ExtendedCache::segment_length ||
-                    e + k < ExtendedCache::segment_length + 1 -
-                                cache_block_count * int(ExtendedCache::cache_bits_unit)) {
-                    ++blocks[cache_block_count - 1];
-                }
+                        blocks, e, k, multiplier_index);
 
                 // Compute nm mod 2^Q.
                 fixed_point_calculator<ExtendedCache::max_cache_blocks>::discard_upper(
@@ -3432,67 +3433,49 @@ namespace jkj::floff {
                     }
                 } // ExtendedCache::segment_length == 22
 
-                else if constexpr (ExtendedCache::segment_length == 248) {
-                    int overlapping_digits = 248 - digits_in_the_second_segment;
+                else if constexpr (ExtendedCache::segment_length == 252) {
+                    int overlapping_digits = 252 - digits_in_the_second_segment;
+                    int remaining_subsegment_pairs = 14;
 
-                    // By increasing overlapping_digits if necessary, we may assume the first
-                    // subsegment pair is of 18 digits.
-                    int remaining_subsegment_pairs;
-                    std::uint64_t subsegment_pair;
-                    bool subsegment_boundary_rounding_bit;
-                    if (overlapping_digits >= 14) {
+                    while (overlapping_digits >= 18) {
                         fixed_point_calculator<ExtendedCache::max_cache_blocks>::discard_upper(
-                            power_of_10<14>, blocks, cache_block_count);
-                        overlapping_digits -= 14;
-                        remaining_subsegment_pairs = 12;
-
-                        while (overlapping_digits >= 18) {
-                            fixed_point_calculator<ExtendedCache::max_cache_blocks>::discard_upper(
-                                power_of_10<18>, blocks, cache_block_count);
-                            --remaining_subsegment_pairs;
-                            overlapping_digits -= 18;
-                        }
-
-                        subsegment_pair =
-                            fixed_point_calculator<ExtendedCache::max_cache_blocks>::generate(
-                                power_of_10<18> << 1, blocks, cache_block_count);
+                            power_of_10<18>, blocks, cache_block_count);
+                        --remaining_subsegment_pairs;
+                        overlapping_digits -= 18;
                     }
-                    else {
-                        overlapping_digits += 4;
-                        remaining_subsegment_pairs = 13;
 
-                        subsegment_pair =
-                            fixed_point_calculator<ExtendedCache::max_cache_blocks>::generate(
-                                power_of_10<14> << 1, blocks, cache_block_count);
-                    }
-                    subsegment_boundary_rounding_bit = (subsegment_pair & 1) != 0;
+                    auto subsegment_pair =
+                        fixed_point_calculator<ExtendedCache::max_cache_blocks>::generate(
+                            power_of_10<18> << 1, blocks, cache_block_count);
+                    auto subsegment_boundary_rounding_bit = (subsegment_pair & 1) != 0;
                     subsegment_pair >>= 1;
 
-                    auto compute_has_further_digits = [&](auto additional_neg_exp_of_10) {
-#define JKJ_FLOFF_248_HAS_FURTHER_DIGITS(n)                                                        \
+                    auto compute_has_further_digits = [&](auto additional_neg_exp_of_2,
+                                                          auto additional_neg_exp_of_10) {
+#define JKJ_FLOFF_252_HAS_FURTHER_DIGITS(n)                                                        \
 case n:                                                                                            \
-    return has_further_digits(uconst<1>,                                                           \
-                              uconst<decltype(additional_neg_exp_of_10)::value + n * 18>);
+    return has_further_digits(additional_neg_exp_of_2,                                             \
+                              uconst<decltype(additional_neg_exp_of_10)::value + (n - 1) * 18>);
                         switch (remaining_subsegment_pairs) {
-                            JKJ_FLOFF_248_HAS_FURTHER_DIGITS(0);
-                            JKJ_FLOFF_248_HAS_FURTHER_DIGITS(1);
-                            JKJ_FLOFF_248_HAS_FURTHER_DIGITS(2);
-                            JKJ_FLOFF_248_HAS_FURTHER_DIGITS(3);
-                            JKJ_FLOFF_248_HAS_FURTHER_DIGITS(4);
-                            JKJ_FLOFF_248_HAS_FURTHER_DIGITS(5);
-                            JKJ_FLOFF_248_HAS_FURTHER_DIGITS(6);
-                            JKJ_FLOFF_248_HAS_FURTHER_DIGITS(7);
-                            JKJ_FLOFF_248_HAS_FURTHER_DIGITS(8);
-                            JKJ_FLOFF_248_HAS_FURTHER_DIGITS(9);
-                            JKJ_FLOFF_248_HAS_FURTHER_DIGITS(10);
-                            JKJ_FLOFF_248_HAS_FURTHER_DIGITS(11);
-                            JKJ_FLOFF_248_HAS_FURTHER_DIGITS(12);
-                            JKJ_FLOFF_248_HAS_FURTHER_DIGITS(13);
+                            JKJ_FLOFF_252_HAS_FURTHER_DIGITS(1);
+                            JKJ_FLOFF_252_HAS_FURTHER_DIGITS(2);
+                            JKJ_FLOFF_252_HAS_FURTHER_DIGITS(3);
+                            JKJ_FLOFF_252_HAS_FURTHER_DIGITS(4);
+                            JKJ_FLOFF_252_HAS_FURTHER_DIGITS(5);
+                            JKJ_FLOFF_252_HAS_FURTHER_DIGITS(6);
+                            JKJ_FLOFF_252_HAS_FURTHER_DIGITS(7);
+                            JKJ_FLOFF_252_HAS_FURTHER_DIGITS(8);
+                            JKJ_FLOFF_252_HAS_FURTHER_DIGITS(9);
+                            JKJ_FLOFF_252_HAS_FURTHER_DIGITS(10);
+                            JKJ_FLOFF_252_HAS_FURTHER_DIGITS(11);
+                            JKJ_FLOFF_252_HAS_FURTHER_DIGITS(12);
+                            JKJ_FLOFF_252_HAS_FURTHER_DIGITS(13);
+                            JKJ_FLOFF_252_HAS_FURTHER_DIGITS(14);
 
                         default:
                             JKJ_UNRECHABLE;
                         }
-#undef JKJ_FLOFF_248_HAS_FURTHER_DIGITS
+#undef JKJ_FLOFF_252_HAS_FURTHER_DIGITS
                     };
 
                     // Deal with the first subsegment pair.
@@ -3552,7 +3535,8 @@ case n:                                                                         
                                             if (check_rounding_condition_subsegment_boundary_with_next_subsegment(
                                                     current_digits,
                                                     uint_with_known_number_of_digits<9>{first_part},
-                                                    compute_has_further_digits, uconst<9>)) {
+                                                    compute_has_further_digits, uconst<1>,
+                                                    uconst<9>)) {
                                                 goto round_up_two_digits;
                                             }
                                             goto print_last_two_digits;
@@ -3571,7 +3555,7 @@ case n:                                                                         
                                     }
                                     else {
                                         if (remaining_digits == 0) {
-                                            goto second_segment248_first_subsegment_rounding_inside_subsegment;
+                                            goto second_segment252_first_subsegment_rounding_inside_subsegment;
                                         }
 
                                         prod = std::uint32_t(prod) * std::uint64_t(100);
@@ -3602,11 +3586,11 @@ case n:                                                                         
                                 }
 
                                 if (digits_in_the_first_part != 0) {
-                                second_segment248_first_subsegment_rounding_inside_subsegment:
+                                second_segment252_first_subsegment_rounding_inside_subsegment:
                                     if (check_rounding_condition_inside_subsegment(
                                             current_digits, std::uint32_t(prod),
                                             digits_in_the_first_part, compute_has_further_digits,
-                                            uconst<9>)) {
+                                            uconst<1>, uconst<9>)) {
                                         goto round_up;
                                     }
                                 }
@@ -3614,7 +3598,7 @@ case n:                                                                         
                                     if (check_rounding_condition_subsegment_boundary_with_next_subsegment(
                                             current_digits,
                                             uint_with_known_number_of_digits<9>{second_part},
-                                            compute_has_further_digits, uconst<0>)) {
+                                            compute_has_further_digits, uconst<1>, uconst<0>)) {
                                         goto round_up;
                                     }
                                 }
@@ -3643,7 +3627,7 @@ case n:                                                                         
                                         if (check_rounding_condition_subsegment_boundary_with_next_subsegment(
                                                 current_digits,
                                                 uint_with_known_number_of_digits<9>{second_part},
-                                                compute_has_further_digits, uconst<0>)) {
+                                                compute_has_further_digits, uconst<1>, uconst<0>)) {
                                             goto round_up_two_digits;
                                         }
                                         goto print_last_two_digits;
@@ -3662,7 +3646,7 @@ case n:                                                                         
                                 }
                                 else {
                                     if (remaining_digits == 0) {
-                                        goto second_segment248_second_subsegment_rounding_inside_subsegment;
+                                        goto second_segment252_second_subsegment_rounding_inside_subsegment;
                                     }
 
                                     prod = std::uint32_t(prod) * std::uint64_t(100);
@@ -3693,18 +3677,18 @@ case n:                                                                         
                             }
 
                             if (digits_in_the_second_part != 0) {
-                            second_segment248_second_subsegment_rounding_inside_subsegment:
+                            second_segment252_second_subsegment_rounding_inside_subsegment:
                                 if (check_rounding_condition_inside_subsegment(
                                         current_digits, std::uint32_t(prod),
                                         digits_in_the_second_part, compute_has_further_digits,
-                                        uconst<0>)) {
+                                        uconst<1>, uconst<0>)) {
                                     goto round_up;
                                 }
                             }
                             else {
                                 if (check_rounding_condition_with_next_bit(
                                         current_digits, subsegment_boundary_rounding_bit,
-                                        compute_has_further_digits, uconst<0>)) {
+                                        compute_has_further_digits, uconst<0>, uconst<0>)) {
                                     goto round_up;
                                 }
                             }
@@ -3713,6 +3697,7 @@ case n:                                                                         
                     }
 
                     // Remaining subsegment pairs do not have overlapping digits.
+                    --remaining_subsegment_pairs;
                     for (; remaining_subsegment_pairs > 0; --remaining_subsegment_pairs) {
                         subsegment_pair =
                             fixed_point_calculator<ExtendedCache::max_cache_blocks>::generate(
@@ -3747,7 +3732,7 @@ case n:                                                                         
                                     current_digits = std::uint32_t(prod >> 32);
 
                                     if (remaining_digits == 1) {
-                                        goto second_segment248_loop_second_subsegment_rounding;
+                                        goto second_segment252_loop_second_subsegment_rounding;
                                     }
 
                                     print_1_digit(current_digits, buffer);
@@ -3758,7 +3743,7 @@ case n:                                                                         
                                     current_digits = std::uint32_t(prod >> 32);
 
                                     if (remaining_digits == 2) {
-                                        goto second_segment248_loop_second_subsegment_rounding;
+                                        goto second_segment252_loop_second_subsegment_rounding;
                                     }
 
                                     print_2_digits(std::uint32_t(prod >> 32), buffer);
@@ -3776,11 +3761,11 @@ case n:                                                                         
                                 remaining_digits = 0;
 
                                 if (remaining_digits_in_the_current_subsegment != 0) {
-                                second_segment248_loop_second_subsegment_rounding:
+                                second_segment252_loop_second_subsegment_rounding:
                                     if (check_rounding_condition_inside_subsegment(
                                             current_digits, std::uint32_t(prod),
                                             remaining_digits_in_the_current_subsegment,
-                                            compute_has_further_digits, uconst<0>)) {
+                                            compute_has_further_digits, uconst<1>, uconst<0>)) {
                                         goto round_up;
                                     }
                                     goto print_last_digits;
@@ -3788,7 +3773,7 @@ case n:                                                                         
                                 else {
                                     if (check_rounding_condition_with_next_bit(
                                             current_digits, subsegment_boundary_rounding_bit,
-                                            compute_has_further_digits, uconst<0>)) {
+                                            compute_has_further_digits, uconst<0>, uconst<0>)) {
                                         goto round_up_two_digits;
                                     }
                                     goto print_last_two_digits;
@@ -3804,7 +3789,7 @@ case n:                                                                         
                                 current_digits = std::uint32_t(prod >> 32);
 
                                 if (remaining_digits == 1) {
-                                    goto second_segment248_loop_first_subsegment_rounding;
+                                    goto second_segment252_loop_first_subsegment_rounding;
                                 }
 
                                 print_1_digit(current_digits, buffer);
@@ -3815,7 +3800,7 @@ case n:                                                                         
                                 current_digits = std::uint32_t(prod >> 32);
 
                                 if (remaining_digits == 2) {
-                                    goto second_segment248_loop_first_subsegment_rounding;
+                                    goto second_segment252_loop_first_subsegment_rounding;
                                 }
 
                                 print_2_digits(std::uint32_t(prod >> 32), buffer);
@@ -3833,11 +3818,11 @@ case n:                                                                         
                             remaining_digits = 0;
 
                             if (remaining_digits_in_the_current_subsegment != 0) {
-                            second_segment248_loop_first_subsegment_rounding:
+                            second_segment252_loop_first_subsegment_rounding:
                                 if (check_rounding_condition_inside_subsegment(
                                         current_digits, std::uint32_t(prod),
                                         remaining_digits_in_the_current_subsegment,
-                                        compute_has_further_digits, uconst<9>)) {
+                                        compute_has_further_digits, uconst<1>, uconst<9>)) {
                                     goto round_up;
                                 }
                                 goto print_last_digits;
@@ -3846,7 +3831,7 @@ case n:                                                                         
                                 if (check_rounding_condition_subsegment_boundary_with_next_subsegment(
                                         current_digits,
                                         uint_with_known_number_of_digits<9>{second_part},
-                                        compute_has_further_digits, uconst<9>)) {
+                                        compute_has_further_digits, uconst<1>, uconst<9>)) {
                                     goto round_up_two_digits;
                                 }
                                 goto print_last_two_digits;
@@ -3856,7 +3841,7 @@ case n:                                                                         
                         buffer += 18;
                         remaining_digits -= 18;
                     }
-                } // ExtendedCache::segment_length == 248
+                } // ExtendedCache::segment_length == 252
             }
 
             // Print all remaining segments.
@@ -3867,15 +3852,7 @@ case n:                                                                         
 
                 cache_block_count =
                     load_extended_cache<ExtendedCache, ExtendedCache::constant_block_count>(
-                        blocks, e, multiplier_index);
-
-                // To compute ceil(2^Q * x / D), we need to check if
-                // 2^Q * x / D = 2^(Q + e - 1 + k - eta) * 5^(k - eta) is an integer or not.
-                if (k < ExtendedCache::segment_length ||
-                    e + k < ExtendedCache::segment_length + 1 -
-                                cache_block_count * int(ExtendedCache::cache_bits_unit)) {
-                    ++blocks[cache_block_count - 1];
-                }
+                        blocks, e, k, multiplier_index);
 
                 // Compute nm mod 2^Q.
                 fixed_point_calculator<ExtendedCache::max_cache_blocks>::discard_upper(
@@ -4128,56 +4105,78 @@ case n:                                                                         
                         goto print_last_two_digits;
                     }
                 } // ExtendedCache::segment_length == 22
-                else if (ExtendedCache::segment_length == 248) {
+                else if (ExtendedCache::segment_length == 252) {
                     // Print as many 18-digits subsegment pairs as possible.
-                    int remaining_18_digits_subsegment_pairs = 13;
-                    while (remaining_digits > 18) {
-                        auto const subsegment_pair =
-                            fixed_point_calculator<ExtendedCache::max_cache_blocks>::generate(
-                                power_of_10<18>, blocks, cache_block_count);
-                        auto const first_part = std::uint32_t(subsegment_pair / power_of_10<9>);
-                        auto const second_part =
-                            std::uint32_t(subsegment_pair) - power_of_10<9> * first_part;
+                    for (int remaining_subsegment_pairs = 14; remaining_subsegment_pairs > 0;
+                         --remaining_subsegment_pairs) {
+                        // No rounding, continue.
+                        if (remaining_digits > 18) {
+                            auto const subsegment_pair =
+                                fixed_point_calculator<ExtendedCache::max_cache_blocks>::generate(
+                                    power_of_10<18>, blocks, cache_block_count);
+                            auto const first_part = std::uint32_t(subsegment_pair / power_of_10<9>);
+                            auto const second_part =
+                                std::uint32_t(subsegment_pair) - power_of_10<9> * first_part;
 
-                        print_9_digits(first_part, buffer);
-                        print_9_digits(second_part, buffer + 9);
-                        buffer += 18;
-                        remaining_digits -= 18;
+                            print_9_digits(first_part, buffer);
+                            print_9_digits(second_part, buffer + 9);
+                            buffer += 18;
+                            remaining_digits -= 18;
+                        }
+                        // Final subsegment pair.
+                        else {
+                            auto compute_has_further_digits = [&](auto additional_neg_exp_of_2,
+                                                                  auto additional_neg_exp_of_10) {
+#define JKJ_FLOFF_252_HAS_FURTHER_DIGITS(n)                                                        \
+case n:                                                                                            \
+    return has_further_digits(additional_neg_exp_of_2,                                             \
+                              uconst<decltype(additional_neg_exp_of_10)::value + (n - 1) * 18>);
+                                switch (remaining_subsegment_pairs) {
+                                    JKJ_FLOFF_252_HAS_FURTHER_DIGITS(1);
+                                    JKJ_FLOFF_252_HAS_FURTHER_DIGITS(2);
+                                    JKJ_FLOFF_252_HAS_FURTHER_DIGITS(3);
+                                    JKJ_FLOFF_252_HAS_FURTHER_DIGITS(4);
+                                    JKJ_FLOFF_252_HAS_FURTHER_DIGITS(5);
+                                    JKJ_FLOFF_252_HAS_FURTHER_DIGITS(6);
+                                    JKJ_FLOFF_252_HAS_FURTHER_DIGITS(7);
+                                    JKJ_FLOFF_252_HAS_FURTHER_DIGITS(8);
+                                    JKJ_FLOFF_252_HAS_FURTHER_DIGITS(9);
+                                    JKJ_FLOFF_252_HAS_FURTHER_DIGITS(10);
+                                    JKJ_FLOFF_252_HAS_FURTHER_DIGITS(11);
+                                    JKJ_FLOFF_252_HAS_FURTHER_DIGITS(12);
+                                    JKJ_FLOFF_252_HAS_FURTHER_DIGITS(13);
+                                    JKJ_FLOFF_252_HAS_FURTHER_DIGITS(14);
 
-                        if (--remaining_18_digits_subsegment_pairs == 0) {
+                                default:
+                                    JKJ_UNRECHABLE;
+                                }
+#undef JKJ_FLOFF_252_HAS_FURTHER_DIGITS
+                            };
+
                             auto last_subsegment_pair =
                                 fixed_point_calculator<ExtendedCache::max_cache_blocks>::
-                                    generate_and_discard_lower(power_of_10<14> << 1, blocks,
+                                    generate_and_discard_lower(power_of_10<18> << 1, blocks,
                                                                cache_block_count);
-                            bool segment_boundary_rounding_bit = ((last_subsegment_pair & 1) != 0);
+                            bool const subsegment_boundary_rounding_bit =
+                                ((last_subsegment_pair & 1) != 0);
                             last_subsegment_pair >>= 1;
 
                             auto const first_part =
-                                std::uint32_t(last_subsegment_pair / power_of_10<6>);
+                                std::uint32_t(last_subsegment_pair / power_of_10<9>);
                             auto const second_part =
-                                std::uint32_t(last_subsegment_pair) - power_of_10<6> * first_part;
+                                std::uint32_t(last_subsegment_pair) - power_of_10<9> * first_part;
 
-                            // No rounding, continue.
-                            if (remaining_digits > 14) {
-                                print_8_digits(first_part, buffer);
-                                print_6_digits(second_part, buffer + 8);
-                                buffer += 14;
-                                remaining_digits -= 14;
-                                goto segment_loop248_loop_out;
-                            }
-
-                            // Final subsegment pair is of 14 digits.
-                            if (remaining_digits <= 8) {
+                            if (remaining_digits <= 9) {
                                 std::uint64_t prod;
 
                                 if ((remaining_digits & 1) != 0) {
-                                    prod = ((first_part * std::uint64_t(112589991)) >> 18) + 1;
+                                    prod = ((first_part * std::uint64_t(1441151881)) >> 25) + 1;
                                     current_digits = std::uint32_t(prod >> 32);
 
                                     if (remaining_digits == 1) {
                                         if (check_rounding_condition_inside_subsegment(
-                                                current_digits, std::uint32_t(prod), 7,
-                                                has_further_digits, uconst<1>, uconst<6>)) {
+                                                current_digits, std::uint32_t(prod), 8,
+                                                compute_has_further_digits, uconst<1>, uconst<9>)) {
                                             goto round_up_one_digit;
                                         }
                                         goto print_last_one_digit;
@@ -4187,11 +4186,11 @@ case n:                                                                         
                                     ++buffer;
                                 }
                                 else {
-                                    prod = ((first_part * std::uint64_t(140737489)) >> 15) + 1;
+                                    prod = ((first_part * std::uint64_t(450359963)) >> 20) + 1;
                                     current_digits = std::uint32_t(prod >> 32);
 
                                     if (remaining_digits == 2) {
-                                        goto segment_loop248_final14_first_part_rounding;
+                                        goto segment_loop252_final18_first_part_rounding;
                                     }
 
                                     print_2_digits(current_digits, buffer);
@@ -4207,137 +4206,40 @@ case n:                                                                         
                                 prod = std::uint32_t(prod) * std::uint64_t(100);
                                 current_digits = std::uint32_t(prod >> 32);
 
-                                if (remaining_digits < 8) {
-                                segment_loop248_final14_first_part_rounding:
+                                if (remaining_digits < 9) {
+                                segment_loop252_final18_first_part_rounding:
                                     if (check_rounding_condition_inside_subsegment(
                                             current_digits, std::uint32_t(prod),
-                                            8 - remaining_digits, has_further_digits, uconst<1>,
-                                            uconst<6>)) {
+                                            9 - remaining_digits, compute_has_further_digits,
+                                            uconst<1>, uconst<9>)) {
                                         goto round_up_two_digits;
                                     }
                                 }
                                 else {
                                     if (check_rounding_condition_subsegment_boundary_with_next_subsegment(
                                             current_digits,
-                                            uint_with_known_number_of_digits<7>{second_part},
-                                            has_further_digits, uconst<1>, uconst<0>)) {
+                                            uint_with_known_number_of_digits<9>{second_part},
+                                            compute_has_further_digits, uconst<1>, uconst<0>)) {
                                         goto round_up_two_digits;
                                     }
                                 }
                                 goto print_last_two_digits;
-                            } // remaining_digits <= 8
+                            } // remaining_digits <= 9
 
-                            print_8_digits(first_part, buffer);
-                            buffer += 8;
-                            remaining_digits -= 8;
+                            print_9_digits(first_part, buffer);
+                            buffer += 9;
+                            remaining_digits -= 9;
 
                             std::uint64_t prod;
 
                             if ((remaining_digits & 1) != 0) {
-                                prod = (second_part * std::uint64_t(429497)) + 1;
-                                current_digits = std::uint32_t(prod >> 32);
-
-                                if (remaining_digits == 1) {
-                                    if (check_rounding_condition_inside_subsegment(
-                                            current_digits, std::uint32_t(prod), 6,
-                                            has_further_digits, uconst<1>, uconst<0>)) {
-                                        goto round_up_one_digit;
-                                    }
-                                    goto print_last_one_digit;
-                                }
-
-                                print_1_digit(current_digits, buffer);
-                                ++buffer;
-                            }
-                            else {
-                                prod = ((second_part * std::uint64_t(687195)) >> 4) + 1;
-                                current_digits = std::uint32_t(prod >> 32);
-
-                                if (remaining_digits == 2) {
-                                    goto segment_loop248_final14_second_part_rounding;
-                                }
-
-                                print_2_digits(current_digits, buffer);
-                                buffer += 2;
-                            }
-
-                            if (remaining_digits > 4) {
-                                prod = std::uint32_t(prod) * std::uint64_t(100);
-                                print_2_digits(std::uint32_t(prod >> 32), buffer);
-                                buffer += 2;
-                            }
-
-                            prod = std::uint32_t(prod) * std::uint64_t(100);
-                            current_digits = std::uint32_t(prod >> 32);
-
-                            if (remaining_digits < 6) {
-                            segment_loop248_final14_second_part_rounding:
-                                if (check_rounding_condition_inside_subsegment(
-                                        current_digits, std::uint32_t(prod), 6 - remaining_digits,
-                                        has_further_digits, uconst<1>, uconst<0>)) {
-                                    goto round_up_two_digits;
-                                }
-                            }
-                            else {
-                                if (check_rounding_condition_with_next_bit(
-                                        current_digits, segment_boundary_rounding_bit,
-                                        has_further_digits, uconst<0>, uconst<0>)) {
-                                    goto round_up_two_digits;
-                                }
-                            }
-                            goto print_last_two_digits;
-                        } // if (--remaining_18_digits_subsegment_pairs == 0)
-                    }     // while (remaining_digits > 18)
-
-                    // Final subsegment pair is of 18 digits.
-                    {
-                        auto compute_has_further_digits = [&](auto additional_neg_exp_of_10) {
-#define JKJ_FLOFF_248_HAS_FURTHER_DIGITS(n)                                                        \
-case n:                                                                                            \
-    return has_further_digits(uconst<1>,                                                           \
-                              uconst<decltype(additional_neg_exp_of_10)::value + (n - 1) * 18>);
-                            switch (remaining_18_digits_subsegment_pairs) {
-                                JKJ_FLOFF_248_HAS_FURTHER_DIGITS(1);
-                                JKJ_FLOFF_248_HAS_FURTHER_DIGITS(2);
-                                JKJ_FLOFF_248_HAS_FURTHER_DIGITS(3);
-                                JKJ_FLOFF_248_HAS_FURTHER_DIGITS(4);
-                                JKJ_FLOFF_248_HAS_FURTHER_DIGITS(5);
-                                JKJ_FLOFF_248_HAS_FURTHER_DIGITS(6);
-                                JKJ_FLOFF_248_HAS_FURTHER_DIGITS(7);
-                                JKJ_FLOFF_248_HAS_FURTHER_DIGITS(8);
-                                JKJ_FLOFF_248_HAS_FURTHER_DIGITS(9);
-                                JKJ_FLOFF_248_HAS_FURTHER_DIGITS(10);
-                                JKJ_FLOFF_248_HAS_FURTHER_DIGITS(11);
-                                JKJ_FLOFF_248_HAS_FURTHER_DIGITS(12);
-                                JKJ_FLOFF_248_HAS_FURTHER_DIGITS(13);
-
-                            default:
-                                JKJ_UNRECHABLE;
-                            }
-#undef JKJ_FLOFF_248_HAS_FURTHER_DIGITS
-                        };
-
-                        auto const last_subsegment_pair =
-                            fixed_point_calculator<ExtendedCache::max_cache_blocks>::
-                                generate_and_discard_lower(power_of_10<18>, blocks,
-                                                           cache_block_count);
-
-                        auto const first_part =
-                            std::uint32_t(last_subsegment_pair / power_of_10<9>);
-                        auto const second_part =
-                            std::uint32_t(last_subsegment_pair) - power_of_10<9> * first_part;
-
-                        if (remaining_digits <= 9) {
-                            std::uint64_t prod;
-
-                            if ((remaining_digits & 1) != 0) {
-                                prod = ((first_part * std::uint64_t(1441151881)) >> 25) + 1;
+                                prod = ((second_part * std::uint64_t(1441151881)) >> 25) + 1;
                                 current_digits = std::uint32_t(prod >> 32);
 
                                 if (remaining_digits == 1) {
                                     if (check_rounding_condition_inside_subsegment(
                                             current_digits, std::uint32_t(prod), 8,
-                                            compute_has_further_digits, uconst<23>)) {
+                                            compute_has_further_digits, uconst<1>, uconst<0>)) {
                                         goto round_up_one_digit;
                                     }
                                     goto print_last_one_digit;
@@ -4347,11 +4249,11 @@ case n:                                                                         
                                 ++buffer;
                             }
                             else {
-                                prod = ((first_part * std::uint64_t(450359963)) >> 20) + 1;
+                                prod = ((second_part * std::uint64_t(450359963)) >> 20) + 1;
                                 current_digits = std::uint32_t(prod >> 32);
 
                                 if (remaining_digits == 2) {
-                                    goto segment_loop248_final18_first_part_rounding;
+                                    goto segment_loop252_final18_second_part_rounding;
                                 }
 
                                 print_2_digits(current_digits, buffer);
@@ -4368,92 +4270,24 @@ case n:                                                                         
                             current_digits = std::uint32_t(prod >> 32);
 
                             if (remaining_digits < 9) {
-                            segment_loop248_final18_first_part_rounding:
+                            segment_loop252_final18_second_part_rounding:
                                 if (check_rounding_condition_inside_subsegment(
                                         current_digits, std::uint32_t(prod), 9 - remaining_digits,
-                                        compute_has_further_digits, uconst<23>)) {
+                                        compute_has_further_digits, uconst<1>, uconst<0>)) {
                                     goto round_up_two_digits;
                                 }
                             }
                             else {
-                                if (check_rounding_condition_subsegment_boundary_with_next_subsegment(
-                                        current_digits,
-                                        uint_with_known_number_of_digits<9>{second_part},
-                                        compute_has_further_digits, uconst<14>)) {
+                                if (check_rounding_condition_with_next_bit(
+                                        current_digits, subsegment_boundary_rounding_bit,
+                                        compute_has_further_digits, uconst<0>, uconst<0>)) {
                                     goto round_up_two_digits;
                                 }
                             }
                             goto print_last_two_digits;
-                        } // remaining_digits <= 9
-
-                        print_9_digits(first_part, buffer);
-                        buffer += 9;
-                        remaining_digits -= 9;
-
-                        std::uint64_t prod;
-
-                        if ((remaining_digits & 1) != 0) {
-                            prod = ((second_part * std::uint64_t(1441151881)) >> 25) + 1;
-                            current_digits = std::uint32_t(prod >> 32);
-
-                            if (remaining_digits == 1) {
-                                if (check_rounding_condition_inside_subsegment(
-                                        current_digits, std::uint32_t(prod), 8,
-                                        compute_has_further_digits, uconst<14>)) {
-                                    goto round_up_one_digit;
-                                }
-                                goto print_last_one_digit;
-                            }
-
-                            print_1_digit(current_digits, buffer);
-                            ++buffer;
                         }
-                        else {
-                            prod = ((second_part * std::uint64_t(450359963)) >> 20) + 1;
-                            current_digits = std::uint32_t(prod >> 32);
-
-                            if (remaining_digits == 2) {
-                                goto segment_loop248_final18_second_part_rounding;
-                            }
-
-                            print_2_digits(current_digits, buffer);
-                            buffer += 2;
-                        }
-
-                        for (int i = 0; i < (remaining_digits - 3) / 2; ++i) {
-                            prod = std::uint32_t(prod) * std::uint64_t(100);
-                            print_2_digits(std::uint32_t(prod >> 32), buffer);
-                            buffer += 2;
-                        }
-
-                        prod = std::uint32_t(prod) * std::uint64_t(100);
-                        current_digits = std::uint32_t(prod >> 32);
-
-                        if (remaining_digits < 9) {
-                        segment_loop248_final18_second_part_rounding:
-                            if (check_rounding_condition_inside_subsegment(
-                                    current_digits, std::uint32_t(prod), 9 - remaining_digits,
-                                    compute_has_further_digits, uconst<14>)) {
-                                goto round_up_two_digits;
-                            }
-                        }
-                        else {
-                            auto const next_subsegment =
-                                fixed_point_calculator<ExtendedCache::max_cache_blocks>::
-                                    generate_and_discard_lower(power_of_10<14>, blocks,
-                                                               cache_block_count);
-
-                            if (check_rounding_condition_subsegment_boundary_with_next_subsegment(
-                                    current_digits,
-                                    uint_with_known_number_of_digits<14>{next_subsegment},
-                                    compute_has_further_digits, uconst<0>)) {
-                                goto round_up_two_digits;
-                            }
-                        }
-                        goto print_last_two_digits;
                     }
-                segment_loop248_loop_out:;
-                } // if (ExtendedCache::segment_length == 248)
+                } // if (ExtendedCache::segment_length == 252)
             }
         }
 

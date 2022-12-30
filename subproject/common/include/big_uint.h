@@ -175,9 +175,19 @@ namespace jkj {
             auto temp = *this;
             return temp.long_division(n);
         }
+        big_uint& operator/=(big_uint const& n) & {
+            auto temp = *this;
+            *this = temp.long_division(n);
+            return *this;
+        }
         big_uint operator/(element_type n) const {
             auto temp = *this;
             return temp.long_division(n);
+        }
+        big_uint& operator/=(element_type n) & {
+            auto temp = *this;
+            *this = temp.long_division(n);
+            return *this;
         }
         big_uint operator%(big_uint const& n) const {
             auto temp = *this;

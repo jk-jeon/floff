@@ -46,11 +46,12 @@ struct multiplier_info {
     struct bit_range {
         int first;
         int last;
+        std::size_t cache_block_count;
     };
 
     bit_range range_union;
     std::vector<bit_range> individual_ranges;
-    std::vector<std::size_t> cache_block_counts;
+    std::vector<int> base_exponents;
 
     int cache_bits;
     jkj::big_uint multiplier;
@@ -272,6 +273,7 @@ auto generate_extended_cache(int segment_length, int collapse_factor, unsigned i
                  e_base < r.first_exponent + int(r.individual_ranges.size());) {
                 auto max_bits = r.individual_ranges[e_base - r.first_exponent].last -
                                 r.individual_ranges[e_base - r.first_exponent].first + 1;
+                r.base_exponents.push_back(e_base);
 
                 int e = e_base + 1;
                 for (; ((e - e_min) % collapse_factor) != 0 &&
@@ -286,18 +288,17 @@ auto generate_extended_cache(int segment_length, int collapse_factor, unsigned i
                 accumulated_number_of_cache_blocks += cache_block_count * (e - e_base);
                 number_of_e_k_pairs += (e - e_base);
                 ++number_of_e_base_k_pairs;
-                r.cache_block_counts.push_back(cache_block_count);
-                e_base = e;
+                auto const new_e_base = e;
+                for (e = e_base; e < new_e_base; ++e) {
+                    r.individual_ranges[e - r.first_exponent].cache_block_count = cache_block_count;
+                }
+                e_base = new_e_base;
             }
         }
         else {
             for (int e = r.first_exponent; e < r.first_exponent + r.individual_ranges.size(); ++e) {
-                r.individual_ranges[e - r.first_exponent].last =
-                    r.individual_ranges[e - r.first_exponent].first + result.max_cache_blocks - 1;
-
-                if (r.individual_ranges[e - r.first_exponent].last > r.range_union.last) {
-                    r.range_union.last = r.individual_ranges[e - r.first_exponent].last;
-                }
+                r.individual_ranges[e - r.first_exponent].cache_block_count =
+                    result.max_cache_blocks;
             }
 
             number_of_e_k_pairs += r.individual_ranges.size();
@@ -306,51 +307,43 @@ auto generate_extended_cache(int segment_length, int collapse_factor, unsigned i
         }
 
         // Generate multiplier.
-        // Remove all trailing zeros.
         r.multiplier = floor(compute_pow2_pow5(r.range_union.last, k - segment_length));
         r.multiplier.long_division(
             jkj::big_uint::power_of_2(std::size_t(r.range_union.last - r.range_union.first + 1)));
-        auto number_of_trailing_zeros = int(r.multiplier.cut_trailing_zeros());
         r.cache_bits = int(log2p1(r.multiplier));
         assert(r.cache_bits > 0);
 
-        r.min_shift = (r.range_union.last - r.range_union.first + 1 - number_of_trailing_zeros) -
-                      r.cache_bits;
+        r.min_shift = (r.range_union.last - r.range_union.first + 1) - r.cache_bits;
 
         for (std::size_t i = 0; i < r.individual_ranges.size(); ++i) {
             // Check if the naive computation of ceiling can succeed for every exponent.
-            // This is the last bits of the cache that will be loaded.
-            auto relevant_block =
-                floor(compute_pow2_pow5(r.individual_ranges[i].last, k - segment_length));
-            std::size_t trimmed_zeros = 0;
-            while (true) {
-                auto q = relevant_block.long_division(jkj::big_uint::power_of_2(cache_bits_unit));
-                if (collapse_factor == 0) {
-                    break;
-                }
+            auto const last_bit_index = r.individual_ranges[i].first +
+                                        r.individual_ranges[i].cache_block_count * cache_bits_unit -
+                                        1;
+            auto excessive_bits_to_right = last_bit_index > r.range_union.last
+                                               ? std::uint32_t(last_bit_index - r.range_union.last)
+                                               : std::uint32_t(0);
+            auto const cache_bits = r.individual_ranges[i].cache_block_count * cache_bits_unit -
+                                    excessive_bits_to_right;
 
-                if (relevant_block.is_zero()) {
-                    trimmed_zeros += cache_bits_unit;
-                    // The last block is all-zero, so this block will get removed.
-                    // When this happens, we want floor and ceiling to be the same.
-                    // So check if 2^Q * x / D = 2^(Q + e - 1 + k - eta) * 5^(k - eta) is an
-                    // integer.
-                    if (k < segment_length || r.individual_ranges[i].last < trimmed_zeros) {
-                        std::cout << "[Failure] Ceiling can possibly fail!\n";
-                        return {};
-                    }
+            auto const number_of_trailing_zero_blocks = excessive_bits_to_right / cache_bits_unit;
+            excessive_bits_to_right %= cache_bits_unit;
 
-                    relevant_block = std::move(q);
-                }
-                else {
-                    break;
-                }
-            }
+            // Should we round-up the loaded cache?
+            if (k < segment_length ||
+                (r.first_exponent + i) + k + cache_bits < segment_length + 1) {
+                // This is the last bits of the cache that will be loaded.
+                auto relevant_block = floor(compute_pow2_pow5(last_bit_index, k - segment_length));
+                relevant_block /=
+                    jkj::big_uint::power_of_2(number_of_trailing_zero_blocks * cache_bits_unit);
+                relevant_block.long_division(jkj::big_uint::power_of_2(cache_bits_unit));
 
-            // The naive computation fails only if the increment to the above overflows.
-            if (++relevant_block == jkj::big_uint::power_of_2(cache_bits_unit)) {
-                std::cout << "[Failure] Ceiling can possibly fail!\n";
-                return {};
+                relevant_block += jkj::big_uint::power_of_2(excessive_bits_to_right);
+
+                if (relevant_block == jkj::big_uint::power_of_2(cache_bits_unit)) {
+                    std::cout << "[Failure] Ceiling can possibly fail!\n";
+                    return {};
+                }
             }
         }
     }
@@ -448,7 +441,6 @@ bool print_cache(std::ostream& out, extended_cache_result<CacheUnitType> const& 
         assert(!aligned_multiplier.is_zero());
 
         for (std::size_t idx = aligned_multiplier.size() - 1; idx > 0; --idx) {
-            current_block |= (aligned_multiplier[idx] >> number_of_written_bits_in_current_block);
             cache_blocks.push_back(current_block | (aligned_multiplier[idx] >>
                                                     number_of_written_bits_in_current_block));
             if (number_of_written_bits_in_current_block == 0) {
@@ -481,7 +473,7 @@ bool print_cache(std::ostream& out, extended_cache_result<CacheUnitType> const& 
 
         cache_bits_prefix_sums.push_back(cache_bits_prefix_sums.back() + int(r.cache_bits));
     }
-    if (current_block != 0) {
+    if (number_of_written_bits_in_current_block != 0) {
         cache_blocks.push_back(current_block);
     }
 
@@ -494,51 +486,68 @@ bool print_cache(std::ostream& out, extended_cache_result<CacheUnitType> const& 
         for (int exp_index = 0; exp_index < last_mul_info.individual_ranges.size(); ++exp_index) {
             // Compute the largest cache block index that can arise.
             // Follow the cache load procedure of the actual algorithm.
-
-            auto cache_block_count =
-                std::uint32_t(last_mul_info.individual_ranges[exp_index].last -
-                              last_mul_info.individual_ranges[exp_index].first + 1) /
-                std::uint32_t(cache.cache_bits_unit);
+            auto cache_block_count = last_mul_info.individual_ranges[exp_index].cache_block_count;
 
             int cache_bit_index = cache_bits_prefix_sums[cache_bits_prefix_sums.size() - 2] +
                                   exp_index - last_mul_info.min_shift;
-            int src_bit_index = cache_bits_prefix_sums[cache_bits_prefix_sums.size() - 2];
+            int src_start_bit_index = cache_bits_prefix_sums[cache_bits_prefix_sums.size() - 2];
 
+            std::uint32_t cache_bit_offset;
             std::uint32_t number_of_initial_zero_blocks;
+            if (cache_bit_index < src_start_bit_index) {
+                auto const src_start_block_index =
+                    int(std::uint32_t(src_start_bit_index) / std::uint32_t(cache.cache_bits_unit));
 
-            if (cache_bit_index < src_bit_index) {
-                number_of_initial_zero_blocks = std::uint32_t(src_bit_index - cache_bit_index) /
-                                                std::uint32_t(cache.cache_bits_unit);
+                if (cache_bit_index < src_start_block_index * int(cache.cache_bits_unit)) {
+                    number_of_initial_zero_blocks =
+                        std::uint32_t(src_start_block_index * int(cache.cache_bits_unit) -
+                                      cache_bit_index + int(cache.cache_bits_unit) - 1) /
+                        std::uint32_t(cache.cache_bits_unit);
+
+                    cache_bit_offset =
+                        std::uint32_t(cache_bit_index +
+                                      int(number_of_initial_zero_blocks * cache.cache_bits_unit)) %
+                        std::uint32_t(cache.cache_bits_unit);
+                }
+                else {
+                    number_of_initial_zero_blocks = 0;
+                    cache_bit_offset =
+                        std::uint32_t(cache_bit_index) % std::uint32_t(cache.cache_bits_unit);
+                }
             }
             else {
-                assert(cache_bit_index >= 0);
-                src_bit_index = cache_bit_index;
                 number_of_initial_zero_blocks = 0;
+                cache_bit_offset =
+                    std::uint32_t(cache_bit_index) % std::uint32_t(cache.cache_bits_unit);
             }
 
-            auto number_of_blocks_covered_by_cache_bits =
-                std::uint32_t(last_mul_info.cache_bits) / std::uint32_t(cache.cache_bits_unit);
-            auto remaining_src_bits =
-                std::uint32_t(last_mul_info.cache_bits) % std::uint32_t(cache.cache_bits_unit);
+            auto const src_end_bit_index =
+                cache_bits_prefix_sums[cache_bits_prefix_sums.size() - 1];
 
-            if (number_of_blocks_covered_by_cache_bits + number_of_initial_zero_blocks >=
-                cache_block_count) {
-                number_of_blocks_covered_by_cache_bits =
-                    cache_block_count - number_of_initial_zero_blocks;
-                remaining_src_bits = 0;
+            if (cache_bit_index + cache_block_count * int(cache.cache_bits_unit) >
+                src_end_bit_index) {
+                auto const excessive_bits_to_right =
+                    std::uint32_t(cache_bit_index + cache_block_count * int(cache.cache_bits_unit) -
+                                  src_end_bit_index);
+                auto const number_of_trailing_zero_blocks =
+                    excessive_bits_to_right / std::uint32_t(cache.cache_bits_unit);
+                cache_block_count -= number_of_trailing_zero_blocks;
             }
 
-            auto const src_block_index =
-                std::uint32_t(src_bit_index) / std::uint32_t(cache.cache_bits_unit);
-            auto const src_bit_offset =
-                std::uint32_t(src_bit_index) % std::uint32_t(cache.cache_bits_unit);
+            auto const first_block_index =
+                int(std::uint32_t(cache_bit_index +
+                                  int(number_of_initial_zero_blocks * cache.cache_bits_unit)) /
+                    std::uint32_t(cache.cache_bits_unit));
+            auto const number_of_blocks_to_load = cache_block_count - number_of_initial_zero_blocks;
 
-            if (src_bit_offset != 0 && remaining_src_bits != 0) {
-                if (src_block_index + number_of_blocks_covered_by_cache_bits + 1 >=
-                    cache_blocks.size()) {
-                    cache_blocks.push_back(0);
-                    break;
-                }
+            auto const last_block_index = cache_bit_offset == 0
+                                              ? first_block_index + number_of_blocks_to_load - 1
+                                              : first_block_index + number_of_blocks_to_load;
+
+            if (last_block_index >= cache_blocks.size()) {
+                assert(last_block_index == cache_blocks.size());
+                cache_blocks.push_back(0);
+                break;
             }
         }
     }
@@ -569,10 +578,12 @@ bool print_cache(std::ostream& out, extended_cache_result<CacheUnitType> const& 
     std::vector<std::uint32_t> cache_block_counts;
     if (cache.collapse_factor != 0) {
         for (auto const& r : cache.mul_info) {
-            for (auto const& c : r.cache_block_counts) {
-                cache_block_counts.push_back(c);
-                cache_block_counts_prefix_sums.push_back(cache_block_counts_prefix_sums.back() + c);
+            for (auto const& e_base : r.base_exponents) {
+                auto const count = r.individual_ranges[e_base - r.first_exponent].cache_block_count;
+                cache_block_counts.push_back(count);
             }
+            cache_block_counts_prefix_sums.push_back(
+                cache_block_counts_prefix_sums.back() + r.base_exponents.size());
         }
     }
 
@@ -736,28 +747,28 @@ void generate_extended_cache_and_write_to_file(char const* filename, int segment
 }
 
 int main() {
-    constexpr bool generate_long = true;
-    constexpr bool generate_compact = true;
+    constexpr bool generate_long = false;
+    constexpr bool generate_compact = false;
     constexpr bool generate_super_compact = true;
 
     if constexpr (generate_long) {
         std::cout << "[Generating long extended cache...]\n";
         generate_extended_cache_and_write_to_file( //
-            "results/binary64_generated_extended_cache_long.txt", 22, 0, 1);
+            "results/binary64_generated_extended_cache_long.txt", 22, 0, 3);
         std::cout << "Done.\n\n\n";
     }
 
     if constexpr (generate_compact) {
         std::cout << "[Generating compact extended cache...]\n";
         generate_extended_cache_and_write_to_file( //
-            "results/binary64_generated_extended_cache_compact.txt", 76, 64, 0);
+            "results/binary64_generated_extended_cache_compact.txt", 80, 64, 0);
         std::cout << "Done.\n\n\n";
     }
 
     if constexpr (generate_super_compact) {
         std::cout << "[Generating super compact extended cache...]\n";
         generate_extended_cache_and_write_to_file( //
-            "results/binary64_generated_extended_cache_super_compact.txt", 248, 128, 0);
+            "results/binary64_generated_extended_cache_super_compact.txt", 252, 128, 27);
         std::cout << "Done.\n\n\n";
     }
 }
