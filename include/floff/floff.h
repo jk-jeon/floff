@@ -888,8 +888,8 @@ namespace jkj::floff {
         // loaded. The most significant block is loaded into blocks_ptr[0].
         template <class ExtendedCache, bool zero_out,
                   class CacheBlockType = std::decay_t<decltype(ExtendedCache::cache[0])>>
-        std::uint8_t load_extended_cache(CacheBlockType* blocks_ptr, int e, int k,
-                                         std::uint32_t multiplier_index) noexcept {
+        JKJ_FORCEINLINE std::uint8_t load_extended_cache(CacheBlockType* blocks_ptr, int e, int k,
+                                                         std::uint32_t multiplier_index) noexcept {
             if constexpr (zero_out) {
                 std::memset(blocks_ptr, 0,
                             sizeof(CacheBlockType) * ExtendedCache::max_cache_blocks);
@@ -933,106 +933,109 @@ namespace jkj::floff {
                 }
             }();
 
-            // Load cache blocks.
-            auto cache_bit_index = int(mul_info.cache_bit_index_offset) + e -
-                                   ExtendedCache::cache_bit_index_offset_base;
-            auto const src_start_bit_index = int(mul_info.first_cache_bit_index);
-
-            std::uint32_t cache_bit_offset;
+            std::uint32_t number_of_leading_zero_blocks;
+            std::uint32_t first_cache_block_index;
+            std::uint32_t bit_offset;
             std::uint32_t excessive_bits_to_left;
-            std::uint32_t number_of_initial_zero_blocks;
+            std::uint32_t excessive_bits_to_right;
 
-            if (cache_bit_index < src_start_bit_index) {
-                auto const src_start_block_index =
-                    int(std::uint32_t(src_start_bit_index) /
-                        std::uint32_t(ExtendedCache::cache_bits_unit));
-                auto const src_start_bit_offset = std::uint32_t(src_start_bit_index) %
-                                                  std::uint32_t(ExtendedCache::cache_bits_unit);
+            // The request window starting/ending positions.
+            auto start_bit_index = int(mul_info.cache_bit_index_offset) + e -
+                                   ExtendedCache::cache_bit_index_offset_base;
+            auto end_bit_index =
+                start_bit_index + cache_block_count * int(ExtendedCache::cache_bits_unit);
 
-                if (cache_bit_index < src_start_block_index * int(ExtendedCache::cache_bits_unit)) {
-                    number_of_initial_zero_blocks =
-                        std::uint32_t(src_start_block_index * int(ExtendedCache::cache_bits_unit) -
-                                      cache_bit_index + int(ExtendedCache::cache_bits_unit) - 1) /
-                        std::uint32_t(ExtendedCache::cache_bits_unit);
-                    assert(number_of_initial_zero_blocks > 0 &&
-                           number_of_initial_zero_blocks <= cache_block_count);
-
-                    if constexpr (!zero_out) {
-                        // Fill initial zero blocks.
-                        std::memset(blocks_ptr, 0,
-                                    (number_of_initial_zero_blocks - 1) * sizeof(CacheBlockType));
-                    }
-                    cache_bit_offset =
-                        std::uint32_t(cache_bit_index + int(number_of_initial_zero_blocks *
-                                                            ExtendedCache::cache_bits_unit)) %
-                        std::uint32_t(ExtendedCache::cache_bits_unit);
-                    excessive_bits_to_left = src_start_bit_offset +
-                                             int(ExtendedCache::cache_bits_unit) - cache_bit_offset;
-                }
-                else {
-                    number_of_initial_zero_blocks = 0;
-                    cache_bit_offset = std::uint32_t(cache_bit_index) %
-                                       std::uint32_t(ExtendedCache::cache_bits_unit);
-                    excessive_bits_to_left = src_start_bit_offset - cache_bit_offset;
-                    assert(src_start_bit_offset >= cache_bit_offset);
-                }
-            }
-            else {
-                number_of_initial_zero_blocks = 0;
-                cache_bit_offset =
-                    std::uint32_t(cache_bit_index) % std::uint32_t(ExtendedCache::cache_bits_unit);
-                excessive_bits_to_left = 0;
-            }
-
+            // The source window starting/ending positions.
+            auto const src_start_bit_index = int(mul_info.first_cache_bit_index);
             auto const src_end_bit_index =
                 int(ExtendedCache::multiplier_index_info_table[multiplier_index + 1]
                         .first_cache_bit_index);
 
-            std::uint32_t excessive_bits_to_right;
-            if (cache_bit_index + cache_block_count * int(ExtendedCache::cache_bits_unit) >
-                src_end_bit_index) {
-                excessive_bits_to_right = std::uint32_t(
-                    cache_bit_index + cache_block_count * int(ExtendedCache::cache_bits_unit) -
-                    src_end_bit_index);
+            // If the request window goes further than the left boundary of the source window,
+            if (start_bit_index < src_start_bit_index) {
+                number_of_leading_zero_blocks =
+                    std::uint32_t(src_start_bit_index - start_bit_index) /
+                    std::uint32_t(ExtendedCache::cache_bits_unit);
+                excessive_bits_to_left = std::uint32_t(src_start_bit_index - start_bit_index) %
+                                         std::uint32_t(ExtendedCache::cache_bits_unit);
 
+                if constexpr (!zero_out) {
+                    std::memset(blocks_ptr, 0,
+                                number_of_leading_zero_blocks * sizeof(CacheBlockType));
+                }
+                start_bit_index +=
+                    number_of_leading_zero_blocks * int(ExtendedCache::cache_bits_unit);
+
+                auto const src_start_block_index =
+                    int(std::uint32_t(src_start_bit_index) /
+                        std::uint32_t(ExtendedCache::cache_bits_unit));
+                auto const src_start_block_bit_index =
+                    src_start_block_index * int(ExtendedCache::cache_bits_unit);
+
+                first_cache_block_index = src_start_block_index;
+
+                if (start_bit_index < src_start_block_bit_index) {
+                    auto shift_amount = src_start_block_bit_index - start_bit_index;
+                    assert(shift_amount >= 0 && shift_amount < int(ExtendedCache::cache_bits_unit));
+
+                    blocks_ptr[number_of_leading_zero_blocks] =
+                        ((ExtendedCache::cache[src_start_block_index] >> shift_amount) &
+                         (CacheBlockType(CacheBlockType(0) - CacheBlockType(1)) >>
+                          excessive_bits_to_left));
+
+                    ++number_of_leading_zero_blocks;
+                    bit_offset = std::uint32_t(int(ExtendedCache::cache_bits_unit) - shift_amount);
+                    excessive_bits_to_left = 0;
+                }
+                else {
+                    bit_offset = std::uint32_t(start_bit_index - src_start_block_bit_index);
+                }
+            }
+            else {
+                number_of_leading_zero_blocks = 0;
+                first_cache_block_index =
+                    std::uint32_t(start_bit_index) / std::uint32_t(ExtendedCache::cache_bits_unit);
+                bit_offset =
+                    std::uint32_t(start_bit_index) % std::uint32_t(ExtendedCache::cache_bits_unit);
+                excessive_bits_to_left = 0;
+            }
+
+            // If the request window goes further than the right boundary of the source window,
+            if (end_bit_index > src_end_bit_index) {
                 auto const number_of_trailing_zero_blocks =
-                    excessive_bits_to_right / std::uint32_t(ExtendedCache::cache_bits_unit);
+                    std::uint32_t(end_bit_index - src_end_bit_index) /
+                    std::uint32_t(ExtendedCache::cache_bits_unit);
+                excessive_bits_to_right = std::uint32_t(end_bit_index - src_end_bit_index) %
+                                          std::uint32_t(ExtendedCache::cache_bits_unit);
 
-                assert(number_of_trailing_zero_blocks + (number_of_initial_zero_blocks != 0
-                                                             ? number_of_initial_zero_blocks - 1
-                                                             : 0) <
-                       cache_block_count);
-
-                excessive_bits_to_right %= std::uint32_t(ExtendedCache::cache_bits_unit);
                 cache_block_count -= number_of_trailing_zero_blocks;
             }
             else {
                 excessive_bits_to_right = 0;
             }
 
-            // Perform shift to align the bit at cache_bit_index to the MSB.
-            auto const first_block_index =
-                int(std::uint32_t(cache_bit_index + int(number_of_initial_zero_blocks *
-                                                        ExtendedCache::cache_bits_unit)) /
-                    std::uint32_t(ExtendedCache::cache_bits_unit));
-            auto const number_of_blocks_to_load = cache_block_count - number_of_initial_zero_blocks;
-            auto dst_ptr = blocks_ptr + number_of_initial_zero_blocks;
-            if (cache_bit_offset == 0) {
+            // Load blocks.
+            auto const number_of_blocks_to_load = cache_block_count - number_of_leading_zero_blocks;
+            auto* const dst_ptr = blocks_ptr + number_of_leading_zero_blocks;
+            if (bit_offset == 0) {
                 if constexpr (ExtendedCache::max_cache_blocks == 3) {
                     switch (number_of_blocks_to_load) {
                     case 3:
-                        std::memcpy(dst_ptr, ExtendedCache::cache + first_block_index,
+                        std::memcpy(dst_ptr, ExtendedCache::cache + first_cache_block_index,
                                     3 * sizeof(CacheBlockType));
                         break;
 
                     case 2:
-                        std::memcpy(dst_ptr, ExtendedCache::cache + first_block_index,
+                        std::memcpy(dst_ptr, ExtendedCache::cache + first_cache_block_index,
                                     2 * sizeof(CacheBlockType));
                         break;
 
                     case 1:
-                        std::memcpy(dst_ptr, ExtendedCache::cache + first_block_index,
+                        std::memcpy(dst_ptr, ExtendedCache::cache + first_cache_block_index,
                                     1 * sizeof(CacheBlockType));
+                        break;
+
+                    case 0:
                         break;
 
                     default:
@@ -1040,7 +1043,7 @@ namespace jkj::floff {
                     }
                 }
                 else {
-                    std::memcpy(dst_ptr, ExtendedCache::cache + first_block_index,
+                    std::memcpy(dst_ptr, ExtendedCache::cache + first_cache_block_index,
                                 number_of_blocks_to_load * sizeof(CacheBlockType));
                 }
             }
@@ -1049,22 +1052,24 @@ namespace jkj::floff {
                     switch (number_of_blocks_to_load) {
                     case 3:
                         *(dst_ptr + 2) =
-                            (ExtendedCache::cache[first_block_index + 2] << cache_bit_offset) |
-                            (ExtendedCache::cache[first_block_index + 3] >>
-                             (ExtendedCache::cache_bits_unit - cache_bit_offset));
+                            (ExtendedCache::cache[first_cache_block_index + 2] << bit_offset) |
+                            (ExtendedCache::cache[first_cache_block_index + 3] >>
+                             (ExtendedCache::cache_bits_unit - bit_offset));
                         [[fallthrough]];
 
                     case 2:
                         *(dst_ptr + 1) =
-                            (ExtendedCache::cache[first_block_index + 1] << cache_bit_offset) |
-                            (ExtendedCache::cache[first_block_index + 2] >>
-                             (ExtendedCache::cache_bits_unit - cache_bit_offset));
+                            (ExtendedCache::cache[first_cache_block_index + 1] << bit_offset) |
+                            (ExtendedCache::cache[first_cache_block_index + 2] >>
+                             (ExtendedCache::cache_bits_unit - bit_offset));
                         [[fallthrough]];
 
                     case 1:
-                        *dst_ptr = (ExtendedCache::cache[first_block_index] << cache_bit_offset) |
-                                   (ExtendedCache::cache[first_block_index + 1] >>
-                                    (ExtendedCache::cache_bits_unit - cache_bit_offset));
+                        *dst_ptr = (ExtendedCache::cache[first_cache_block_index] << bit_offset) |
+                                   (ExtendedCache::cache[first_cache_block_index + 1] >>
+                                    (ExtendedCache::cache_bits_unit - bit_offset));
+
+                    case 0:
                         break;
 
                     default:
@@ -1074,25 +1079,14 @@ namespace jkj::floff {
                 else {
                     for (std::uint8_t i = 0; i < number_of_blocks_to_load; ++i) {
                         *(dst_ptr + i) =
-                            (ExtendedCache::cache[first_block_index + i] << cache_bit_offset) |
-                            (ExtendedCache::cache[first_block_index + i + 1] >>
-                             (ExtendedCache::cache_bits_unit - cache_bit_offset));
+                            (ExtendedCache::cache[first_cache_block_index + i] << bit_offset) |
+                            (ExtendedCache::cache[first_cache_block_index + i + 1] >>
+                             (ExtendedCache::cache_bits_unit - bit_offset));
                     }
                 }
             }
-
-            // Fill the left-most nonzero block if necessary.
-            // Also remove possible flooding bits from adjacent entries.
-            if (excessive_bits_to_left >= ExtendedCache::cache_bits_unit) {
-                excessive_bits_to_left -= ExtendedCache::cache_bits_unit;
-                assert(excessive_bits_to_left < ExtendedCache::cache_bits_unit);
-            }
-            else if (number_of_initial_zero_blocks != 0) {
-                assert(cache_bit_offset != 0);
-                --dst_ptr;
-                *dst_ptr = (ExtendedCache::cache[first_block_index] >>
-                            (ExtendedCache::cache_bits_unit - cache_bit_offset));
-            }
+            
+            // Remove possible flooding bits from adjacent entries.
             *dst_ptr &=
                 (CacheBlockType(CacheBlockType(0) - CacheBlockType(1)) >> excessive_bits_to_left);
 

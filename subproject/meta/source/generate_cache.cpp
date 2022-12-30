@@ -488,61 +488,64 @@ bool print_cache(std::ostream& out, extended_cache_result<CacheUnitType> const& 
             // Follow the cache load procedure of the actual algorithm.
             auto cache_block_count = last_mul_info.individual_ranges[exp_index].cache_block_count;
 
-            int cache_bit_index = cache_bits_prefix_sums[cache_bits_prefix_sums.size() - 2] +
-                                  exp_index - last_mul_info.min_shift;
-            int src_start_bit_index = cache_bits_prefix_sums[cache_bits_prefix_sums.size() - 2];
+            std::uint32_t number_of_leading_zero_blocks;
+            std::uint32_t first_cache_block_index;
+            std::uint32_t bit_offset;
 
-            std::uint32_t cache_bit_offset;
-            std::uint32_t number_of_initial_zero_blocks;
-            if (cache_bit_index < src_start_bit_index) {
-                auto const src_start_block_index =
-                    int(std::uint32_t(src_start_bit_index) / std::uint32_t(cache.cache_bits_unit));
+            // The request window starting/ending positions.
+            auto start_bit_index = cache_bits_prefix_sums[cache_bits_prefix_sums.size() - 2] +
+                                   exp_index - last_mul_info.min_shift;
+            auto end_bit_index = start_bit_index + cache_block_count * int(cache.cache_bits_unit);
 
-                if (cache_bit_index < src_start_block_index * int(cache.cache_bits_unit)) {
-                    number_of_initial_zero_blocks =
-                        std::uint32_t(src_start_block_index * int(cache.cache_bits_unit) -
-                                      cache_bit_index + int(cache.cache_bits_unit) - 1) /
-                        std::uint32_t(cache.cache_bits_unit);
-
-                    cache_bit_offset =
-                        std::uint32_t(cache_bit_index +
-                                      int(number_of_initial_zero_blocks * cache.cache_bits_unit)) %
-                        std::uint32_t(cache.cache_bits_unit);
-                }
-                else {
-                    number_of_initial_zero_blocks = 0;
-                    cache_bit_offset =
-                        std::uint32_t(cache_bit_index) % std::uint32_t(cache.cache_bits_unit);
-                }
-            }
-            else {
-                number_of_initial_zero_blocks = 0;
-                cache_bit_offset =
-                    std::uint32_t(cache_bit_index) % std::uint32_t(cache.cache_bits_unit);
-            }
-
+            // The source window starting/ending positions.
+            auto const src_start_bit_index =
+                cache_bits_prefix_sums[cache_bits_prefix_sums.size() - 2];
             auto const src_end_bit_index =
                 cache_bits_prefix_sums[cache_bits_prefix_sums.size() - 1];
 
-            if (cache_bit_index + cache_block_count * int(cache.cache_bits_unit) >
-                src_end_bit_index) {
-                auto const excessive_bits_to_right =
-                    std::uint32_t(cache_bit_index + cache_block_count * int(cache.cache_bits_unit) -
-                                  src_end_bit_index);
+            // If the request window goes further than the left boundary of the source window,
+            if (start_bit_index < src_start_bit_index) {
+                number_of_leading_zero_blocks =
+                    std::uint32_t(src_start_bit_index - start_bit_index) /
+                    std::uint32_t(cache.cache_bits_unit);
+
+                start_bit_index += number_of_leading_zero_blocks * int(cache.cache_bits_unit);
+
+                auto const src_start_block_index =
+                    int(std::uint32_t(src_start_bit_index) / std::uint32_t(cache.cache_bits_unit));
+                auto const src_start_block_bit_index =
+                    src_start_block_index * int(cache.cache_bits_unit);
+
+                first_cache_block_index = src_start_block_index;
+
+                if (start_bit_index < src_start_block_bit_index) {
+                    auto shift_amount = src_start_block_bit_index - start_bit_index;
+                    ++number_of_leading_zero_blocks;
+                    bit_offset = std::uint32_t(int(cache.cache_bits_unit) - shift_amount);
+                }
+                else {
+                    bit_offset = std::uint32_t(start_bit_index - src_start_block_bit_index);
+                }
+            }
+            else {
+                number_of_leading_zero_blocks = 0;
+                first_cache_block_index =
+                    std::uint32_t(start_bit_index) / std::uint32_t(cache.cache_bits_unit);
+                bit_offset = std::uint32_t(start_bit_index) % std::uint32_t(cache.cache_bits_unit);
+            }
+
+            // If the request window goes further than the right boundary of the source window,
+            if (end_bit_index > src_end_bit_index) {
                 auto const number_of_trailing_zero_blocks =
-                    excessive_bits_to_right / std::uint32_t(cache.cache_bits_unit);
+                    std::uint32_t(end_bit_index - src_end_bit_index) /
+                    std::uint32_t(cache.cache_bits_unit);
                 cache_block_count -= number_of_trailing_zero_blocks;
             }
 
-            auto const first_block_index =
-                int(std::uint32_t(cache_bit_index +
-                                  int(number_of_initial_zero_blocks * cache.cache_bits_unit)) /
-                    std::uint32_t(cache.cache_bits_unit));
-            auto const number_of_blocks_to_load = cache_block_count - number_of_initial_zero_blocks;
-
-            auto const last_block_index = cache_bit_offset == 0
-                                              ? first_block_index + number_of_blocks_to_load - 1
-                                              : first_block_index + number_of_blocks_to_load;
+            auto const number_of_blocks_to_load = cache_block_count - number_of_leading_zero_blocks;
+            auto const last_block_index =
+                bit_offset == 0 ? first_cache_block_index + number_of_blocks_to_load - 1
+                                : first_cache_block_index + number_of_blocks_to_load;
 
             if (last_block_index >= cache_blocks.size()) {
                 assert(last_block_index == cache_blocks.size());
@@ -582,8 +585,8 @@ bool print_cache(std::ostream& out, extended_cache_result<CacheUnitType> const& 
                 auto const count = r.individual_ranges[e_base - r.first_exponent].cache_block_count;
                 cache_block_counts.push_back(count);
             }
-            cache_block_counts_prefix_sums.push_back(
-                cache_block_counts_prefix_sums.back() + r.base_exponents.size());
+            cache_block_counts_prefix_sums.push_back(cache_block_counts_prefix_sums.back() +
+                                                     r.base_exponents.size());
         }
     }
 
@@ -747,8 +750,8 @@ void generate_extended_cache_and_write_to_file(char const* filename, int segment
 }
 
 int main() {
-    constexpr bool generate_long = false;
-    constexpr bool generate_compact = false;
+    constexpr bool generate_long = true;
+    constexpr bool generate_compact = true;
     constexpr bool generate_super_compact = true;
 
     if constexpr (generate_long) {
