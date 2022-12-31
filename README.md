@@ -1,6 +1,7 @@
 # floff
 A test repository for the WIP algorithm for fixed-precision floating-point formatting.
 
+An explanation of the algorithm is given [here](https://jk-jeon.github.io/posts/2022/12/fixed-precision-formatting/).
 
 For quick experiment: [https://godbolt.org/z/5948en1zo](https://godbolt.org/z/5948en1zo)
 
