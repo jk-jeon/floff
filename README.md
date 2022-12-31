@@ -2,6 +2,9 @@
 A test repository for the WIP algorithm for fixed-precision floating-point formatting.
 
 
+For quick experiment: [https://godbolt.org/z/5948en1zo](https://godbolt.org/z/5948en1zo)
+
+
 ![benchmark](subproject/benchmark/results/to_chars_fixed_precision_benchmark_binary64.png)
 - **Red**: Proposed algorithm with the full (9904 bytes) cache table and the long (3688 bytes) extended cache table.
 - **Green**: Proposed algorithm with the compressed (584 bytes) cache table and the super-compact (580 bytes) extended cache table.
