@@ -9,8 +9,8 @@ For quick experiment: [https://godbolt.org/z/5948en1zo](https://godbolt.org/z/59
 ![benchmark](subproject/benchmark/results/to_chars_fixed_precision_benchmark_binary64.png)
 - **Red**: Proposed algorithm with the full (9904 bytes) cache table and the long (3688 bytes) extended cache table.
 - **Green**: Proposed algorithm with the compressed (584 bytes) cache table and the super-compact (580 bytes) extended cache table.
-- **Blue**: Ryu-printf (reference implementation).
-- **Purple**: fmtlib.
+- **Blue**: Ryū-printf (reference implementation).
+- **Purple**: `fmtlib` (a variant of [Grisu3](https://www.cs.tufts.edu/~nr/cs257/archive/florian-loitsch/printf.pdf) with [Dragon4](https://lists.nongnu.org/archive/html/gcl-devel/2012-10/pdfkieTlklRzN.pdf) fallback).
 
 Compiled binary size of the benchmark program:
 ```
