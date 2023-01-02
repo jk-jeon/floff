@@ -104,7 +104,7 @@ int main(int /*argc*/, char* /*argv*/[]) {
                     }
                 }
 
-                if (((to - from + 1) & 0xffffff) != 0xffffff) {
+                if (((to - 1) & 0xffffff) != 0xffffff) {
                     std::lock_guard lg{mtx};
                     std::cerr << "Thread " << thread_id << ": " << (to - from) << " / "
                               << (to - from) << " done.\n";
