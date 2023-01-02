@@ -72,7 +72,7 @@ static void live_test() {
         std::cin >> number_of_digits;
 
         std::cout << "std::cout output: " << std::scientific
-                  << std::setprecision(number_of_digits - 1) << x << "\n\n";
+                  << std::setprecision(number_of_digits - 1) << x << "\n";
 
         if (number_of_digits + 7 > buffer.size()) {
             buffer.resize(number_of_digits + 7);
@@ -81,7 +81,7 @@ static void live_test() {
                                                                          buffer.data()) -
                       buffer.data() + 1);
         buffer.back() = '\0';
-        std::cout << "    floff output: " << buffer << "\n";
+        std::cout << "    floff output: " << buffer << "\n\n";
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
 }
