@@ -67,11 +67,12 @@ install(FILES ${floff_headers}
 
 # ---- Subproject ----
 
-option(floff_ENABLE_SUBPROJECT "Build subproject as well" OFF)
+option(floff_ENABLE_SUBPROJECT "Build subprojects as well" OFF)
 
 if (floff_ENABLE_SUBPROJECT)
     add_subdirectory("subproject/benchmark")
     add_subdirectory("subproject/meta")
+    add_subdirectory("subproject/test")
 endif()
 
 # ---- MSVC Specifics ----

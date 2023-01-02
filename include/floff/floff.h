@@ -2050,8 +2050,16 @@ namespace jkj::floff {
             else {
                 // Zero
                 if (significand == 0) {
-                    std::memcpy(buffer, "0e0", 3);
-                    return buffer + 3;
+                    if (precision == 0) {
+                        std::memcpy(buffer, "0e+00", 5);
+                        return buffer + 5;
+                    }
+                    else {
+                        std::memcpy(buffer, "0.", 2);
+                        std::memset(buffer + 2, '0', precision);
+                        std::memcpy(buffer + 2 + precision, "e+00", 4);
+                        return buffer + precision + 6;
+                    }
                 }
                 // Nonzero
                 e = ieee754_binary64::min_exponent - ieee754_binary64::significand_bits;
@@ -2380,7 +2388,7 @@ namespace jkj::floff {
                         if (check_rounding_condition_inside_subsegment(
                                 current_digits, std::uint32_t(prod),
                                 remaining_digits_in_the_current_subsegment - remaining_digits,
-                                second_third_subsegments != 0 && has_more_segments)) {
+                                second_third_subsegments != 0 || has_more_segments)) {
                             goto round_up;
                         }
                         goto print_last_digits;
@@ -2524,7 +2532,7 @@ namespace jkj::floff {
                         if (check_rounding_condition_inside_subsegment(
                                 current_digits, std::uint32_t(prod),
                                 remaining_digits_in_the_current_subsegment - remaining_digits,
-                                third_subsegment != 0 && has_more_segments)) {
+                                third_subsegment != 0 || has_more_segments)) {
                             goto round_up;
                         }
                         goto print_last_digits;
