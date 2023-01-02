@@ -1,4 +1,4 @@
-// Copyright 2023 Paul Dreik
+// Copyright 2023 Paul Dreik (edited by Junekey Jeon)
 //
 // The contents of this file may be used under the terms of
 // the Apache License v2.0 with LLVM Exceptions.
@@ -17,8 +17,6 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
-#include <atomic>
-#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <future>
@@ -101,14 +99,14 @@ int main(int /*argc*/, char* /*argv*/[]) {
 
                     if ((u & 0xffffff) == 0xffffff) {
                         std::lock_guard lg{mtx};
-                        std::cout << "Thread " << thread_id << ": " << (u - from + 1) << " / "
+                        std::cerr << "Thread " << thread_id << ": " << (u - from + 1) << " / "
                                   << (to - from) << " done.\n";
                     }
                 }
 
                 if (((to - from + 1) & 0xffffff) != 0xffffff) {
                     std::lock_guard lg{mtx};
-                    std::cout << "Thread " << thread_id << ": " << (to - from) << " / "
+                    std::cerr << "Thread " << thread_id << ": " << (to - from) << " / "
                               << (to - from) << " done.\n";
                 }
 
@@ -125,7 +123,7 @@ int main(int /*argc*/, char* /*argv*/[]) {
     }
 
     if (failure_cases.empty()) {
-        std::cout << "No error case was found.\n";
+        std::cerr << "No error case was found.\n";
     }
     else {
         for (auto const& failure_case : failure_cases) {
@@ -135,9 +133,9 @@ int main(int /*argc*/, char* /*argv*/[]) {
                       << " reference=" << failure_case.reference_result << '\n';
         }
 
-        std::cout << "Done.\n\n\n";
+        std::cerr << "Done.\n\n\n";
         return -1;
     }
 
-    std::cout << "Done.\n\n\n";
+    std::cerr << "Done.\n\n\n";
 }
