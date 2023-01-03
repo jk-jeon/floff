@@ -758,9 +758,9 @@ void generate_extended_cache_and_write_to_file(char const* filename, int segment
 }
 
 int main() {
-    constexpr bool generate_long = false;
+    constexpr bool generate_long = true;
     constexpr bool generate_compact = true;
-    constexpr bool generate_super_compact = false;
+    constexpr bool generate_super_compact = true;
 
     if constexpr (generate_long) {
         std::cout << "[Generating long extended cache...]\n";
