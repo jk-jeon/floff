@@ -90,10 +90,9 @@ auto generate_extended_cache(int segment_length, int collapse_factor, unsigned i
 
     auto const k_min = kappa - jkj::floff::detail::log::floor_log10_pow2(e_max) + segment_length -
                        int(k_min_shift);
-    // The highest power of 5 we need is 5^(-e_min + 1), so the last segment index is
-    // (-e_min + 1 - k_min + segment_length - 1) / segment_length.
-    auto const number_of_multipliers =
-        (-e_min + 1 - k_min + segment_length - 1) / segment_length + 1;
+    // When k = k_min + s * segment_length > segment_length - e_min, the segment we get is always
+    // zero, so the largest s is floor((-e_min - k_min + segment_length) / segment_length).
+    auto const number_of_multipliers = (-e_min - k_min) / segment_length + 2;
 
     auto const n_max =
         jkj::big_uint::power_of_2(std::size_t(float_format::significand_bits + 2)) - 1;
@@ -264,7 +263,9 @@ auto generate_extended_cache(int segment_length, int collapse_factor, unsigned i
         auto& r = mul_info[multiplier_index];
         int const k = k_min + multiplier_index * segment_length;
 
+        // Skip multipliers that do not have actual exponents attached.
         if (r.individual_ranges.empty()) {
+            r.cache_bits = 0;
             continue;
         }
 
@@ -433,43 +434,46 @@ bool print_cache(std::ostream& out, extended_cache_result<CacheUnitType> const& 
     assert(jkj::big_uint::element_number_of_bits == cache.cache_bits_unit);
 
     for (auto const& r : cache.mul_info) {
-        // Align the MSB of the multiplier to the MSB of the first element in the multiplier,
-        // to simplify the procedure.
-        auto const shift_amount =
-            (r.multiplier.size() * cache.cache_bits_unit) - int(log2p1(r.multiplier));
-        auto const aligned_multiplier = r.multiplier * jkj::big_uint::power_of_2(shift_amount);
-        assert(!aligned_multiplier.is_zero());
+        if (r.cache_bits != 0) {
+            // Align the MSB of the multiplier to the MSB of the first element in the multiplier,
+            // to simplify the procedure.
+            auto const shift_amount =
+                (r.multiplier.size() * cache.cache_bits_unit) - int(log2p1(r.multiplier));
+            auto const aligned_multiplier = r.multiplier * jkj::big_uint::power_of_2(shift_amount);
+            assert(!aligned_multiplier.is_zero());
 
-        for (std::size_t idx = aligned_multiplier.size() - 1; idx > 0; --idx) {
-            cache_blocks.push_back(current_block | (aligned_multiplier[idx] >>
-                                                    number_of_written_bits_in_current_block));
-            if (number_of_written_bits_in_current_block == 0) {
-                current_block = 0;
+            for (std::size_t idx = aligned_multiplier.size() - 1; idx > 0; --idx) {
+                cache_blocks.push_back(current_block | (aligned_multiplier[idx] >>
+                                                        number_of_written_bits_in_current_block));
+                if (number_of_written_bits_in_current_block == 0) {
+                    current_block = 0;
+                }
+                else {
+                    current_block =
+                        (aligned_multiplier[idx]
+                         << (cache.cache_bits_unit - number_of_written_bits_in_current_block));
+                }
+            }
+            auto const number_of_remaining_bits = cache.cache_bits_unit - shift_amount;
+
+            if (number_of_remaining_bits + number_of_written_bits_in_current_block >=
+                cache.cache_bits_unit) {
+                cache_blocks.push_back(current_block | (aligned_multiplier[0] >>
+                                                        number_of_written_bits_in_current_block));
+
+                current_block =
+                    (aligned_multiplier[0]
+                     << (cache.cache_bits_unit - number_of_written_bits_in_current_block));
+
+                number_of_written_bits_in_current_block = number_of_remaining_bits +
+                                                          number_of_written_bits_in_current_block -
+                                                          cache.cache_bits_unit;
             }
             else {
-                current_block =
-                    (aligned_multiplier[idx]
-                     << (cache.cache_bits_unit - number_of_written_bits_in_current_block));
+                current_block |= (aligned_multiplier[0] >> number_of_written_bits_in_current_block);
+                number_of_written_bits_in_current_block += number_of_remaining_bits;
             }
-        }
-        auto const number_of_remaining_bits = cache.cache_bits_unit - shift_amount;
-
-        if (number_of_remaining_bits + number_of_written_bits_in_current_block >=
-            cache.cache_bits_unit) {
-            cache_blocks.push_back(
-                current_block | (aligned_multiplier[0] >> number_of_written_bits_in_current_block));
-
-            current_block = (aligned_multiplier[0]
-                             << (cache.cache_bits_unit - number_of_written_bits_in_current_block));
-
-            number_of_written_bits_in_current_block = number_of_remaining_bits +
-                                                      number_of_written_bits_in_current_block -
-                                                      cache.cache_bits_unit;
-        }
-        else {
-            current_block |= (aligned_multiplier[0] >> number_of_written_bits_in_current_block);
-            number_of_written_bits_in_current_block += number_of_remaining_bits;
-        }
+        }        
 
         cache_bits_prefix_sums.push_back(cache_bits_prefix_sums.back() + int(r.cache_bits));
     }
