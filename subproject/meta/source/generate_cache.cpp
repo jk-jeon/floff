@@ -758,8 +758,8 @@ void generate_extended_cache_and_write_to_file(char const* filename, int segment
 }
 
 int main() {
-    constexpr bool generate_long = true;
-    constexpr bool generate_compact = false;
+    constexpr bool generate_long = false;
+    constexpr bool generate_compact = true;
     constexpr bool generate_super_compact = false;
 
     if constexpr (generate_long) {
@@ -772,7 +772,7 @@ int main() {
     if constexpr (generate_compact) {
         std::cout << "[Generating compact extended cache...]\n";
         generate_extended_cache_and_write_to_file( //
-            "results/binary64_generated_extended_cache_compact.txt", 80, 64, 0);
+            "results/binary64_generated_extended_cache_compact.txt", 80, 64, 1);
         std::cout << "Done.\n\n\n";
     }
 

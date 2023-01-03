@@ -1900,43 +1900,43 @@ namespace jkj::floff {
         static constexpr bool constant_block_count = false;
         static constexpr int collapse_factor = 64;
         static constexpr int e_min = -1074;
-        static constexpr int k_min = -210;
-        static constexpr int cache_bit_index_offset_base = 964;
+        static constexpr int k_min = -211;
+        static constexpr int cache_bit_index_offset_base = 967;
         static constexpr int cache_block_count_offset_base = 27;
 
         static constexpr std::uint64_t cache[] = {
-            0xc795830d75038c1d, 0xd59df5b9ef6a2417, 0xfeb13da03da3a72f, 0xa1be04416f774ca1,
-            0x85f538987c4d8ab3, 0xde9c74098f2bafaa, 0xa14c221ad536f7af, 0x67d5fe0c0a0ff7f3,
-            0x0de9d31958870e22, 0xc5ac162d4339a052, 0xd0d1d97e0d614173, 0x802b4105b336f99f,
-            0xb2d984f4f566db5f, 0xb533e21c804345bd, 0x1f326438a9241b9f, 0x9c5ef58109bb5397,
-            0xa8df5efabc5979c8, 0xfca8d3ffa1ef463c, 0x1d897747ed9d851e, 0x7e089e51c5849436,
-            0x84991b0e100065e9, 0x5b739863e3229abf, 0x20ad3b847a221d5b, 0x54cfe86e61fe7942,
-            0x52100905ac4685b8, 0xc9d071c69307a1b5, 0x443f79e206bc53fe, 0xad0d5e38f3213d42,
-            0xc7e9ffc57eb87287, 0x899f2e376c6750de, 0x277c9dee7a4ad4b8, 0x1eef92c7ccd0b1ed,
-            0xa88809578b3c883f, 0xacac074718d3a861, 0xc2e7a8075f6f48b7, 0xf7575b91c1228c74,
-            0xa6156587fb4d33e7, 0x10f12886b5f4e7d3, 0xf1f8c78ab01e4c8e, 0x2ca5131d29e6d9bc,
-            0x31e1fa72ff00a896, 0x0d72272b42d76b8d, 0x4ed9b2e8caa13ccd, 0xee30cdb21a96c453,
-            0xcfb26c0c4ad47994, 0xa33653a0ffed981c, 0x1d6019d9050b2bd3, 0xf70f4cd944754727,
-            0xcb2734119d3b7a9a, 0xa51823e34a7eedeb, 0xd4b46f0599fd4151, 0x0331d72aeaf71658,
-            0x6ff327d536b74698, 0xfa475791a569d10f, 0x96e017d694487bcd, 0x671a0192ea53fcdf,
-            0x4f028faa0591cee1, 0x10848f82d5dc343b, 0xf046f580a6dc57f2, 0x388f0f4ecd04a7c9,
-            0x28069cf3cb733ef1, 0x8cece59cf233b0f6, 0x711334bcda45f1d3, 0x625ba277930142f2,
-            0x9981c43f8a015832, 0x9b927206988a3207, 0x710462b1f77da9a0, 0xb36caa2112ab8b91,
-            0x9b31ca21b110d5d1, 0x70c5cb8ef4ef21e0, 0xbfff827fd7fca291, 0x6083c84685eb1511,
-            0xd86ad0063cca31d8, 0xbb805953a1297b88, 0xf63d7956e0d98578, 0x80976336e47a55a4,
-            0xe26491b9c8dbbfc5, 0x405b99dac54b48d5, 0xf5033bae4a2c613a, 0xbce5f30e3c3ae7a5,
-            0x9f0efb302818554f, 0x83412b3c79e33e50, 0x856a8777d6468b5d, 0x9bc1690affcda2f1,
-            0xda1dfde453a3d469, 0x826c9a87361f35f8, 0x79c1e1fb5e140cbb, 0xd2e5d0703d1e4d7b,
-            0x4e263e53ab13676f, 0xbae3ec77c07755a8, 0xc81109b422e30769, 0xfac9d2aca5844f05,
-            0x87a7e9d9bb1d9c4f, 0x8c8f408fac935e4a, 0x635e65532989419f, 0x4efcc4d7ba319b9f,
-            0xdf2809505710bd22, 0xb5e4edb89cda5b59, 0x12ad5b9910fe8ad6, 0xf8e45c246285362a,
-            0x972bc5046accbe70, 0xb4de428c28ebec9d, 0x02e47593c24145ee, 0xaa90a540c28355e2,
-            0x0367ac12d7fdaaeb, 0xe2187d19d06dde15, 0x649e162610192e14, 0xaf30e9d3c4b190b8,
-            0xbd04d772b36d826a, 0x2d6275f5b7343bff, 0x7ca39b6c06ae7414, 0x227c995776fbefa9,
-            0x95a4627d7d96416f, 0x1db95b9aed4e0161, 0x611d81ca92cc44fd, 0x8c42c7adfa974d94,
-            0x729442cc23490c8f, 0x1ba514d154d1a3a5, 0x4f957b16e69a7395, 0xad7d0af4f070aa2c,
-            0x7cbef9d2c3f5c30b, 0x66ec52ce16d31ef2, 0xe4dd4f9ca6b07c1f, 0xe3ffcc165d60011d,
-            0x7955021b42f8a908, 0x7d3bbcd24c62b3b0, 0xe824b0a990000000, 0x0000000000000000};
+            0x9faacf3df73609b1, 0x77b191618c54e9ac, 0xcbc0fe19cae9528c, 0x8164d034592c3d4e,
+            0x04c42d46c9d7a229, 0x7ee39007a5bc8cc3, 0x5469cf7bb8b25e57, 0x2effce010198cb81,
+            0x642eb5bc0d8169e0, 0x91356aed1f5cd514, 0xe1c8f30156868b8c, 0xd1201a2b857f5cc5,
+            0x15c07ee55715eff8, 0x8530360cd386f94f, 0xeb706c10ea02c329, 0x3cb22680f921f59e,
+            0x3231912d5bf60e61, 0x0e1fff697ed6c695, 0xa8bed97c2f3b63fc, 0xda96e93c07538a6d,
+            0xc1c4e34ccd6fdbc5, 0x85c09fd1d0f79834, 0x485f3a5d03622bba, 0xe640b09cca5b9d50,
+            0x19a80913a40927a9, 0x4d82d751a5cf886d, 0x325c9cd793b9977b, 0x4896c18501fb9e0c,
+            0xa9993bfdf3ea7275, 0xcb7d257a3ee7c9d8, 0xcbf8fdb78849a5f9, 0x6de98520472bdd03,
+            0x36efd14b69b311de, 0x694fa387dcf3e78f, 0xdccfbfc61d1662ef, 0xbe3a4d4104fb75a2,
+            0x289ccaebae5c6d2d, 0x436915952987fa63, 0x830446728505ab75, 0x3ad8772923e4e0c0,
+            0xca946600436f3894, 0x0faae7895e3885f0, 0xadf6b773b1ebf8e0, 0x52473dd5e8218647,
+            0x5e6b5121ca3b747c, 0x217399923cd80bc0, 0x0a56ced144bb2f9f, 0xb856e82eea863c1f,
+            0x5cdae42f9562104d, 0x3fa421962c8c4241, 0x63451ff73769a3d2, 0xb0895649e11affd6,
+            0xe5dd7be415e5d3ef, 0x282a242e818f1668, 0xc8a86da5faf0b5cc, 0xf5176ecc7cbb19db,
+            0x2a9a282e49b4da0e, 0x59e22f9ed2cb3a4b, 0xc010afa26505a7e7, 0xee47b3ab83a99c3e,
+            0xc7eafae5fa385ec2, 0x3ec747e06293a148, 0x4b8a8260baf424a7, 0x63079a1ac7709a4e,
+            0x7fd0cd567aa4a0fa, 0x6909d0e0cfc6ce8d, 0xe0c965770d1491dd, 0xa6d4449e3a3e13ea,
+            0x73e06d2253c6b584, 0x9f95a4b69679998d, 0x0cc8cc76a8234060, 0xd3da311bb4fc0aae,
+            0x670614382f45f33c, 0x21f68425f4189fbf, 0x557ce28d58d9a8bd, 0x1f16d908907d0a0e,
+            0x929415f993b9a2c2, 0x95e0878748988052, 0xc4a104701f794a31, 0xe7d2d2b0c3c31b19,
+            0x1e6a68d5574b3d9d, 0x5727ec70c7681154, 0xe4b2adae8ac5259e, 0x1cefff5ed639205f,
+            0xf9410ba5daeb3af5, 0x21b0ad30acb4b8d2, 0xd324604028bf6fac, 0x349a5d2dc4bdc6e0,
+            0xc77223714aff22d9, 0x5b18ce4aabb5b369, 0xb8a6d609b15ecab7, 0x2111dbce86023643,
+            0x2a5717a571b96b6c, 0x8039783af28427bf, 0x5bbadd6a1a3fb931, 0xe8564a7a3e3ff2dc,
+            0xd0868939e541158e, 0xc57d0b8a8af06dde, 0xf1706d329def96c1, 0xbe74f435713bb7d5,
+            0x8dcdaef5bfb0242c, 0x73b5a1c8c8ec33c7, 0x4ab726d9dac95550, 0x210cf3b3ddfa00ae,
+            0x559d5e65eefbfa04, 0xe5d1f67c5f9de0ec, 0x6ad4699ea2d0efd6, 0x9590c0f05024f29a,
+            0x917d5715e6e20913, 0xb13124a40bffe5ba, 0x5248ce22e40406e5, 0xb844b16596551ded,
+            0xad4c4c5140496c58, 0x458562ae335689b6, 0x269441e13a195ad3, 0x7a5e32a8baf53ea8,
+            0x6d1469edb474b5f6, 0xe87b554829f6ee5b, 0xbf824a42bae3bdef, 0xed12ec6937744feb,
+            0x2ca544e624e048f9, 0x1bab8d5ee0c61285, 0x8863eaef018d32d9, 0x98f37ac46669f7ea,
+            0xa9a0573cb5501b2b, 0xf25c3a8e08a5694d, 0x42355a8000000000, 0x0000000000000000};
 
         struct multiplier_index_info {
             std::uint16_t first_cache_bit_index;
@@ -1945,11 +1945,11 @@ namespace jkj::floff {
         };
 
         static constexpr multiplier_index_info multiplier_index_info_table[] = {
-            {0, 0, 0},          {382, 648, 9},      {1028, 1560, 22},  {1939, 2736, 39},
-            {3062, 4125, 60},   {3132, 4461, 70},   {3388, 4983, 84},  {3830, 5690, 98},
-            {4457, 6494, 111},  {5181, 7217, 123},  {5824, 7860, 134}, {6387, 8425, 143},
-            {6872, 8910, 151},  {7277, 9315, 158},  {7602, 9639, 164}, {7846, 9884, 168},
-            {8011, 10049, 171}, {8096, 10133, 173}, {8100, 0, 0}};
+            {0, 0, 0},          {377, 643, 9},      {1020, 1551, 22},  {1924, 2721, 39},
+            {3046, 4109, 60},   {3114, 4443, 70},   {3368, 4962, 84},  {3807, 5667, 98},
+            {4432, 6473, 111},  {5158, 7199, 123},  {5804, 7845, 134}, {6370, 8411, 143},
+            {6856, 8896, 151},  {7261, 9302, 158},  {7587, 9628, 164}, {7833, 9874, 168},
+            {7999, 10039, 171}, {8084, 10124, 173}, {8089, 0, 0}};
 
         static constexpr std::uint8_t cache_block_counts[] = {
             0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66,
