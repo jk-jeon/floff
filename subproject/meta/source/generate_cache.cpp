@@ -765,7 +765,7 @@ int main() {
     if constexpr (generate_long) {
         std::cout << "[Generating long extended cache...]\n";
         generate_extended_cache_and_write_to_file( //
-            "results/binary64_generated_extended_cache_long.txt", 22, 0, 3);
+            "results/binary64_generated_extended_cache_long.txt", 22, 0, 4);
         std::cout << "Done.\n\n\n";
     }
 
