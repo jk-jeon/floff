@@ -96,7 +96,7 @@ auto generate_extended_cache(int segment_length, int collapse_factor, unsigned i
 
     auto const n_max =
         jkj::big_uint::power_of_2(std::size_t(float_format::significand_bits + 2)) - 1;
-    auto segment_divisor = jkj::big_uint::pow(10, std::size_t(segment_length));
+    auto two_segment_divisor = jkj::big_uint::pow(10, std::size_t(segment_length)) * 2;
 
     auto compute_pow2_pow5 = [pow2_pow5_cache =
                                   std::unordered_map<std::pair<int, int>, rational, pair_hash>{}](
@@ -174,22 +174,15 @@ auto generate_extended_cache(int segment_length, int collapse_factor, unsigned i
             std::size_t cache_bits = cache_bits_unit;
             std::size_t binary_search_length = cache_bits_unit;
             // m = ceil(2^Q * x / D) = ceil(2^(Q + e - 1 + k - eta) * 5^(k - eta)).
-            jkj::big_uint m;
-            int const first_bit_index = e + k - segment_length;
-            int last_bit_index;
-            auto bigger_than_two_xi = [&](rational const& r) {
-                return 2 * m * segment_divisor * r.denominator <
-                       jkj::big_uint::power_of_2(cache_bits) * r.numerator;
-            };
+            // We need to inspect the inequality
+            // 2mD / 2^Q < (RHS) =: a/b, or equivalently,
+            // (b * 2D) * m < 2^Q * a.
 
-            bool got_upper_bound = false;
-            while (true) {
-                last_bit_index = int(cache_bits) + e - 1 + k - segment_length;
-                m = ceil(compute_pow2_pow5(last_bit_index, k - segment_length));
-
-                bool enough_precision;
+            jkj::big_uint a, b_times_2D;
+            {
+                rational rhs;
                 if (two_x.denominator == 1) {
-                    enough_precision = bigger_than_two_xi(two_x + rational{1, n_max});
+                    rhs = two_x + rational{1, n_max};
                 }
                 else if (two_x.denominator <= n_max) {
                     // Compute the greatest v <= n_max such that vp == -1 (mod q).
@@ -201,19 +194,31 @@ auto generate_extended_cache(int segment_length, int collapse_factor, unsigned i
                                  .above.denominator;
                     v += ((n_max - v) / two_x.denominator) * two_x.denominator;
 
-                    // Compare xi against target + 1/vq = (vp + 1)/vq.
+                    // Compare xi against 2x + 1/vq = (vp + 1)/vq.
                     // Note that vp + 1 is guaranteed to be a multiple of q.
-                    auto numerator = (v * two_x.numerator + 1).long_division(two_x.denominator);
-                    enough_precision = bigger_than_two_xi({std::move(numerator), std::move(v)});
+                    rhs.numerator = (v * two_x.numerator + 1).long_division(two_x.denominator);
+                    rhs.denominator = std::move(v);
                 }
                 else {
-                    enough_precision = bigger_than_two_xi(
-                        jkj::find_best_rational_approx<
-                            jkj::rational_continued_fractions<jkj::big_uint>>(two_x, n_max)
-                            .above);
+                    rhs = jkj::find_best_rational_approx<
+                              jkj::rational_continued_fractions<jkj::big_uint>>(two_x, n_max)
+                              .above;
                 }
 
-                if (enough_precision) {
+                a = std::move(rhs.numerator);
+                b_times_2D = std::move(rhs.denominator);
+                b_times_2D *= two_segment_divisor;
+            }
+
+            jkj::big_uint m;
+            int const first_bit_index = e + k - segment_length;
+            int last_bit_index;
+            bool got_upper_bound = false;
+            while (true) {
+                last_bit_index = int(cache_bits) + e - 1 + k - segment_length;
+                m = ceil(compute_pow2_pow5(last_bit_index, k - segment_length));
+
+                if (b_times_2D * m < jkj::big_uint::power_of_2(cache_bits) * a) {
                     got_upper_bound = true;
                     binary_search_length >>= 1;
                     if (binary_search_length == 0) {
@@ -473,7 +478,7 @@ bool print_cache(std::ostream& out, extended_cache_result<CacheUnitType> const& 
                 current_block |= (aligned_multiplier[0] >> number_of_written_bits_in_current_block);
                 number_of_written_bits_in_current_block += number_of_remaining_bits;
             }
-        }        
+        }
 
         cache_bits_prefix_sums.push_back(cache_bits_prefix_sums.back() + int(r.cache_bits));
     }
@@ -755,8 +760,8 @@ void generate_extended_cache_and_write_to_file(char const* filename, int segment
 
 int main() {
     constexpr bool generate_long = true;
-    constexpr bool generate_compact = true;
-    constexpr bool generate_super_compact = true;
+    constexpr bool generate_compact = false;
+    constexpr bool generate_super_compact = false;
 
     if constexpr (generate_long) {
         std::cout << "[Generating long extended cache...]\n";
@@ -780,6 +785,6 @@ int main() {
     }
 
     // 4392 bytes.
-    generate_extended_cache_and_write_to_file( //
-        "results/test.txt", 18, 0, 16);
+    // generate_extended_cache_and_write_to_file( //
+    //    "results/test.txt", 18, 0, 16);
 }
