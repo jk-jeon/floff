@@ -168,17 +168,17 @@ auto generate_extended_cache(int segment_length, int collapse_factor, unsigned i
         auto multiplier_index = (k_min_local - k_min) / segment_length;
         auto k = k_min + multiplier_index * segment_length;
 
+        // m = ceil(2^Q * x / D) = ceil(2^(Q + e - 1 + k - eta) * 5^(k - eta)).
+        // We need to inspect the inequality
+        // 2mD / 2^Q < (RHS) =: a/b, or equivalently,
+        // (b * 2D) * m < 2^Q * a.
+        jkj::big_uint m, a, b_times_2D;
+
         while (k < std::max(0, -e + 1) + segment_length) {
             auto const& two_x = compute_pow2_pow5(e + k, k);
 
             std::size_t cache_bits = cache_bits_unit;
-            std::size_t binary_search_length = cache_bits_unit;
-            // m = ceil(2^Q * x / D) = ceil(2^(Q + e - 1 + k - eta) * 5^(k - eta)).
-            // We need to inspect the inequality
-            // 2mD / 2^Q < (RHS) =: a/b, or equivalently,
-            // (b * 2D) * m < 2^Q * a.
-
-            jkj::big_uint a, b_times_2D;
+            std::size_t binary_search_length = cache_bits_unit;           
             {
                 rational rhs;
                 if (two_x.denominator == 1) {
@@ -210,7 +210,6 @@ auto generate_extended_cache(int segment_length, int collapse_factor, unsigned i
                 b_times_2D *= two_segment_divisor;
             }
 
-            jkj::big_uint m;
             int const first_bit_index = e + k - segment_length;
             int last_bit_index;
             bool got_upper_bound = false;
