@@ -778,4 +778,8 @@ int main() {
             "results/binary64_generated_extended_cache_super_compact.txt", 252, 128, 27);
         std::cout << "Done.\n\n\n";
     }
+
+    // 4392 bytes.
+    generate_extended_cache_and_write_to_file( //
+        "results/test.txt", 18, 0, 16);
 }
