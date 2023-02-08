@@ -17,13 +17,16 @@
 // is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, either express or implied.
 
+#include <cassert>
 #include <cstdint>
 #include <cstdio>
 #include <future>
 #include <iostream>
 #include <mutex>
+#include <string>
 #include <string_view>
 #include <thread>
+#include <vector>
 
 #include "floff/floff.h"
 
@@ -66,6 +69,9 @@ int main(int /*argc*/, char* /*argv*/[]) {
     }
     for (std::size_t i = 0; i < r; ++i) {
         ranges[i + 1] += i + 1;
+    }
+    for (std::size_t i = r; i < hw_concurrency; ++i) {
+        ranges[i + 1] += r;
     }
     assert(ranges[hw_concurrency] == (std::uint64_t(1) << 32));
 
