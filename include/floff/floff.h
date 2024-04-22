@@ -1085,7 +1085,7 @@ namespace jkj::floff {
                     }
                 }
             }
-            
+
             // Remove possible flooding bits from adjacent entries.
             *dst_ptr &=
                 (CacheBlockType(CacheBlockType(0) - CacheBlockType(1)) >> excessive_bits_to_left);
@@ -2867,14 +2867,12 @@ namespace jkj::floff {
                                 JKJ_UNRECHABLE;
                             }
 
-                        second_segment22_more_than_16_digits_first_subsegment_no_rounding_odd_remaining
-                            :
+                        second_segment22_more_than_16_digits_first_subsegment_no_rounding_odd_remaining:
                             prod = std::uint32_t(prod) * std::uint64_t(10);
                             print_1_digit(std::uint32_t(prod >> 32), buffer);
                             ++buffer;
 
-                        second_segment22_more_than_16_digits_first_subsegment_no_rounding_even_remaining
-                            :
+                        second_segment22_more_than_16_digits_first_subsegment_no_rounding_even_remaining:
                             for (; remaining_digits_in_the_current_subsegment > 1;
                                  remaining_digits_in_the_current_subsegment -= 2) {
                                 prod = std::uint32_t(prod) * std::uint64_t(100);
@@ -3005,7 +3003,7 @@ namespace jkj::floff {
                                                            (additional_static_data_holder::
                                                                 fractional_part_rounding_thresholds32
                                                                     [digits_in_the_second_segment -
-                                                                     1] &
+                                                                     3] &
                                                             0x7fffffff) ||
                                                        has_further_digits(uconst<1>, uconst<0>);
                                             })) {
@@ -3209,8 +3207,7 @@ namespace jkj::floff {
                                     }
                                 }
                                 else {
-                                second_segment22_more_than_9_digits_first_subsegment_rounding_inside_subsegment
-                                    :
+                                second_segment22_more_than_9_digits_first_subsegment_rounding_inside_subsegment:
                                     if (check_rounding_condition_inside_subsegment(
                                             current_digits, std::uint32_t(prod),
                                             remaining_digits_in_the_current_subsegment,
@@ -3348,8 +3345,7 @@ namespace jkj::floff {
                                     }
                                 }
                                 else {
-                                second_segment22_more_than_9_digits_second_subsegment_rounding_inside_subsegment
-                                    :
+                                second_segment22_more_than_9_digits_second_subsegment_rounding_inside_subsegment:
                                     if (check_rounding_condition_inside_subsegment(
                                             current_digits, std::uint32_t(prod),
                                             digits_in_the_second_subsegment, has_further_digits,
