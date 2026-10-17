@@ -2235,7 +2235,7 @@ namespace jkj::floff {
                             ++buffer;
                         }
                         else {
-                            prod = (segment32 * std::uint64_t(450359963)) >> 29;
+                            prod = (segment32 * std::uint64_t(450359963)) >> 20;
                             current_digits = std::uint32_t(prod >> 32);
 
                             if (check_rounding_condition_inside_subsegment(
