@@ -2237,7 +2237,7 @@ namespace jkj::floff {
                             ++buffer;
                         }
                         else {
-                            prod = (segment32 * std::uint64_t(450359963)) >> 29;
+                            prod = (segment32 * std::uint64_t(450359963)) >> 20;
                             current_digits = std::uint32_t(prod >> 32);
 
                             if (check_rounding_condition_inside_subsegment(
@@ -3831,7 +3831,7 @@ case n:                                                                         
                                 if (check_rounding_condition_subsegment_boundary_with_next_subsegment(
                                         current_digits,
                                         uint_with_known_number_of_digits<9>{second_part},
-                                        compute_has_further_digits, uconst<1>, uconst<9>)) {
+                                        compute_has_further_digits, uconst<1>, uconst<0>)) {
                                     goto round_up_two_digits;
                                 }
                                 goto print_last_two_digits;
