@@ -2068,6 +2068,8 @@ namespace jkj::floff {
         constexpr int kappa = 2;
         int k = kappa - detail::log::floor_log10_pow2(e);
         std::uint32_t current_digits;
+        // The digits current_digits holds when rounding it up carries; the parity of remaining_digits does not always tell
+        int carried_digit_count = 0;
         char* const buffer_starting_pos = buffer;
         int decimal_exponent = -k;
         int remaining_digits = precision + 1;
@@ -3326,7 +3328,8 @@ namespace jkj::floff {
                                 }
 
                                 assert(remaining_digits >= 3);
-                                if (remaining_digits > 4) {
+                                // The second subsegment can have 7 digits, so 3 or 5 may be left after the first ones
+                                for (int i = 0; i < (remaining_digits - 3) / 2; ++i) {
                                     prod = std::uint32_t(prod) * std::uint64_t(100);
                                     print_2_digits(std::uint32_t(prod >> 32), buffer);
                                     buffer += 2;
@@ -4333,6 +4336,7 @@ case n:                                                                         
         if ((remaining_digits & 1) != 0) {
         round_up_one_digit:
             if (++current_digits == 10) {
+                carried_digit_count = 1;
                 goto round_up_all_9s;
             }
             goto print_last_one_digit;
@@ -4340,6 +4344,7 @@ case n:                                                                         
         else {
         round_up_two_digits:
             if (++current_digits == 100) {
+                carried_digit_count = 2;
                 goto round_up_all_9s;
             }
             goto print_last_two_digits;
@@ -4360,7 +4365,7 @@ case n:                                                                         
 
     round_up_all_9s:
         char* first_9_pos = buffer;
-        buffer += (2 - (remaining_digits & 1));
+        buffer += carried_digit_count;
         // Find all preceding 9's.
         while (true) {
             // '0' is written on buffer_starting_pos, so we have this:
